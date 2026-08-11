@@ -1,0 +1,60 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+<!--
+    <record model="ir.ui.view" id="infs_time_off.list">
+      <field name="name">infs_time_off list</field>
+      <field name="model">infs_time_off.infs_time_off</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="value"/>
+          <field name="value2"/>
+        </tree>
+      </field>
+    </record>
+-->
+
+    <!-- actions opening views on models -->
+<!--
+    <record model="ir.actions.act_window" id="infs_time_off.action_window">
+      <field name="name">infs_time_off window</field>
+      <field name="res_model">infs_time_off.infs_time_off</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+-->
+
+    <!-- server action to the one above -->
+<!--
+    <record model="ir.actions.server" id="infs_time_off.action_server">
+      <field name="name">infs_time_off server</field>
+      <field name="model_id" ref="model_infs_time_off_infs_time_off"/>
+      <field name="state">code</field>
+      <field name="code">
+        action = {
+          "type": "ir.actions.act_window",
+          "view_mode": "tree,form",
+          "res_model": model._name,
+        }
+      </field>
+    </record>
+-->
+
+    <!-- Top menu item -->
+<!--
+    <menuitem name="infs_time_off" id="infs_time_off.menu_root"/>
+-->
+    <!-- menu categories -->
+<!--
+    <menuitem name="Menu 1" id="infs_time_off.menu_1" parent="infs_time_off.menu_root"/>
+    <menuitem name="Menu 2" id="infs_time_off.menu_2" parent="infs_time_off.menu_root"/>
+-->
+    <!-- actions -->
+<!--
+    <menuitem name="List" id="infs_time_off.menu_1_list" parent="infs_time_off.menu_1"
+              action="infs_time_off.action_window"/>
+    <menuitem name="Server to list" id="infs_time_off" parent="infs_time_off.menu_2"
+              action="infs_time_off.action_server"/>
+-->
+  </data>
+</odoo>

@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Submitted: Time Off request submitted to approver -->
+        <record id="mail_template_leave_submitted" model="mail.template">
+            <field name="name">Time Off: Submitted for Approval</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="subject">Time Off Request: {{ object.display_name }}</field>
+            <field name="email_from">{{ object.employee_company_id.partner_id.email or '' }}</field>
+            <field name="body_html">
+<![CDATA[
+<div style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+        <!-- Header -->
+        <tr>
+            <td style="background-color: #714B67; padding: 30px 40px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px; letter-spacing: 1px;">Time Off Request</h1>
+                <p style="margin: 8px 0 0 0; color: #d0e8ff; font-size: 14px;">Pending Your Approval</p>
+            </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px 40px 10px 40px;">
+                <p style="margin: 0; font-size: 15px; color: #333333;">
+                    Hello,
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 14px; color: #555555; line-height: 1.6;">
+                    A new time off request has been submitted and requires your approval.
+                    Please review the details below and take action.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Details Table -->
+        <tr>
+            <td style="padding: 20px 40px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    <tr style="background-color: #e8f0fe;">
+                        <td colspan="2" style="padding: 10px 16px;">
+                            <strong style="font-size: 13px; color: #714B67; text-transform: uppercase; letter-spacing: 0.5px;">Request Details</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; width: 40%; border-bottom: 1px solid #f0f0f0;">Employee</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.employee_id.name or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">Leave Type</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.holiday_status_id.name or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">From</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_from or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">To</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_to or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">Duration</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; font-weight: bold; border-bottom: 1px solid #f0f0f0;" t-out="object.number_of_days_display"/> </td>
+                    </tr>
+                    <tr t-if="object.name" style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Description</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333;" t-out="object.name or ''"/>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- CTA Button -->
+        <tr>
+            <td style="padding: 10px 40px 30px 40px; text-align: center;">
+                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                   style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
+                    View Request &#8594;
+                </a>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f4f6f9; padding: 16px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                <p style="margin: 0; font-size: 11px; color: #aaaaaa;">
+                    This email is automatically sent from the ERP system. Please login to review and take action.
+                </p>
+            </td>
+        </tr>
+
+    </table>
+</div>
+]]>
+            </field>
+        </record>
+
+        <!-- Approved: Time Off request approved, notify employee -->
+        <record id="mail_template_leave_approved" model="mail.template">
+            <field name="name">Time Off: Approved</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="subject">Time Off Approved: {{ object.display_name }}</field>
+            <field name="email_from">{{ object.employee_company_id.partner_id.email or '' }}</field>
+            <field name="body_html">
+<![CDATA[
+<div style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+        <!-- Header -->
+        <tr>
+            <td style="background-color: #714B67; padding: 30px 40px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px; letter-spacing: 1px;">Time Off Approved</h1>
+                <p style="margin: 8px 0 0 0; color: #c8e6c9; font-size: 14px;">Your request has been approved</p>
+            </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px 40px 10px 40px;">
+                <p style="margin: 0; font-size: 15px; color: #333333;">
+                    Hello <t t-out="object.employee_id.name or ''"/>,
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 14px; color: #555555; line-height: 1.6;">
+                    Your time off request has been <strong style="color: #714B67;">approved</strong>.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Details Table -->
+        <tr>
+            <td style="padding: 20px 40px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    <tr style="background-color: #e8f5e9;">
+                        <td colspan="2" style="padding: 10px 16px;">
+                            <strong style="font-size: 13px; color: #714B67; text-transform: uppercase; letter-spacing: 0.5px;">Request Details</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; width: 40%; border-bottom: 1px solid #f0f0f0;">Leave Type</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.holiday_status_id.name or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">From</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_from or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">To</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_to or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Duration</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; font-weight: bold;" t-out="object.number_of_days_display"/> </td>
+                    </tr>
+                    <tr t-if="object.name" style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Description</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333;" t-out="object.name or ''"/>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- CTA Button -->
+        <tr>
+            <td style="padding: 10px 40px 30px 40px; text-align: center;">
+                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                   style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
+                    View Request &#8594;
+                </a>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f4f6f9; padding: 16px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                <p style="margin: 0; font-size: 11px; color: #aaaaaa;">
+                    This email is automatically sent from the ERP system. Please do not reply.
+                </p>
+            </td>
+        </tr>
+
+    </table>
+</div>
+]]>
+            </field>
+        </record>
+
+        <!-- Refused: Time Off request refused, notify employee -->
+        <record id="mail_template_leave_refused" model="mail.template">
+            <field name="name">Time Off: Refused</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="subject">Time Off Refused: {{ object.display_name }}</field>
+            <field name="email_from">{{ object.employee_company_id.partner_id.email or '' }}</field>
+            <field name="body_html">
+<![CDATA[
+<div style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+        <!-- Header -->
+        <tr>
+            <td style="background-color: #714B67; padding: 30px 40px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px; letter-spacing: 1px;">Time Off Refused</h1>
+                <p style="margin: 8px 0 0 0; color: #ffcdd2; font-size: 14px;">Your request has been refused</p>
+            </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px 40px 10px 40px;">
+                <p style="margin: 0; font-size: 15px; color: #333333;">
+                    Hello <t t-out="object.employee_id.name or ''"/>,
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 14px; color: #555555; line-height: 1.6;">
+                    Your time off request has been <strong style="color: #714B67;">refused</strong>.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Details Table -->
+        <tr>
+            <td style="padding: 20px 40px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    <tr style="background-color: #ffebee;">
+                        <td colspan="2" style="padding: 10px 16px;">
+                            <strong style="font-size: 13px; color: #714B67; text-transform: uppercase; letter-spacing: 0.5px;">Request Details</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; width: 40%; border-bottom: 1px solid #f0f0f0;">Leave Type</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.holiday_status_id.name or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">From</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_from or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">To</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_to or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Duration</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; font-weight: bold;" t-out="object.number_of_days_display"/> </td>
+                    </tr>
+                    <tr t-if="object.name" style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Description</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333;" t-out="object.name or ''"/>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- CTA Button -->
+        <tr>
+            <td style="padding: 10px 40px 30px 40px; text-align: center;">
+                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                   style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
+                    View Request &#8594;
+                </a>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f4f6f9; padding: 16px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                <p style="margin: 0; font-size: 11px; color: #aaaaaa;">
+                    This email is automatically sent from the ERP system. Please do not reply.
+                </p>
+            </td>
+        </tr>
+
+    </table>
+</div>
+]]>
+            </field>
+        </record>
+
+        <!-- Second Approver: after first approval, notify second approver -->
+        <record id="mail_template_leave_second_approval" model="mail.template">
+            <field name="name">Time Off: Second Approval Required</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="subject">Time Off Request: {{ object.display_name }} - Second Approval</field>
+            <field name="email_from">{{ object.employee_company_id.partner_id.email or '' }}</field>
+            <field name="body_html">
+<![CDATA[
+<div style="margin: 0; padding: 0; background-color: #f4f6f9; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 30px auto; background-color: #ffffff; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+        <!-- Header -->
+        <tr>
+            <td style="background-color: #714B67; padding: 30px 40px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px; letter-spacing: 1px;">Second Approval Required</h1>
+                <p style="margin: 8px 0 0 0; color: #d0e8ff; font-size: 14px;">Manager approved — your review is needed</p>
+            </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+            <td style="padding: 30px 40px 10px 40px;">
+                <p style="margin: 0; font-size: 15px; color: #333333;">
+                    Hello,
+                </p>
+                <p style="margin: 12px 0 0 0; font-size: 14px; color: #555555; line-height: 1.6;">
+                    This time off request has been approved by the manager and now requires your final approval.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Details Table -->
+        <tr>
+            <td style="padding: 20px 40px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; border-radius: 6px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    <tr style="background-color: #e8f0fe;">
+                        <td colspan="2" style="padding: 10px 16px;">
+                            <strong style="font-size: 13px; color: #714B67; text-transform: uppercase; letter-spacing: 0.5px;">Request Details</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; width: 40%; border-bottom: 1px solid #f0f0f0;">Employee</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.employee_id.name or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">Leave Type</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.holiday_status_id.name or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">From</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_from or ''"/>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">To</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.request_date_to or ''"/>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">Duration</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; font-weight: bold; border-bottom: 1px solid #f0f0f0;" t-out="object.number_of_days_display"/> </td>
+                    </tr>
+                    <tr style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold; border-bottom: 1px solid #f0f0f0;">First Approved By</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333; border-bottom: 1px solid #f0f0f0;" t-out="object.first_approver_id.name or ''"/>
+                    </tr>
+                    <tr t-if="object.name" style="background-color: #fafafa;">
+                        <td style="padding: 12px 16px; font-size: 13px; color: #888888; font-weight: bold;">Description</td>
+                        <td style="padding: 12px 16px; font-size: 13px; color: #333333;" t-out="object.name or ''"/>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- CTA Button -->
+        <tr>
+            <td style="padding: 10px 40px 30px 40px; text-align: center;">
+                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                   style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
+                    Review Request &#8594;
+                </a>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #f4f6f9; padding: 16px 40px; text-align: center; border-top: 1px solid #e0e0e0;">
+                <p style="margin: 0; font-size: 11px; color: #aaaaaa;">
+                    This email is automatically sent from the ERP system. Please login to review and take action.
+                </p>
+            </td>
+        </tr>
+
+    </table>
+</div>
+]]>
+            </field>
+        </record>
+
+    </data>
+</odoo>

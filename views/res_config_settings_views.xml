@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.time.off</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="75"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Time Off" string="Time Off" name="infs_time_off" groups="hr_holidays.group_hr_holidays_manager">
+                    <block title="Carry Forward" name="carry_forward_setting_container">
+                        <setting id="carry_forward_expired_setting"
+                                 title="Carry Forward Expiry"
+                                 help="Automatically expire carried-forward leave balances after a set date or year.">
+                            <field name="is_carry_forward_expired"/>
+                            <div class="content-group" invisible="not is_carry_forward_expired">
+                                <div class="row mt16">
+                                    <label for="carry_forward_expired_date" class="col-lg-4 o_light_label"
+                                           string="Expiry Date"/>
+                                    <field name="carry_forward_expired_date" widget="date"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="carry_forward_expired_year" class="col-lg-4 o_light_label"
+                                           string="Expiry Year"/>
+                                    <field name="carry_forward_expired_year"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="time_off_allocation_plan_setting"
+                                 title="Carry-Forward Allocation"
+                                 help="Default accrual plan, time off type, and start date used when creating carry-forward allocations via cron.">
+                            <div class="row mt16">
+                                <label for="time_off_type_id" class="col-lg-4 o_light_label"
+                                       string="Time Off Type"/>
+                                <field name="time_off_type_id"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="time_off_allocation_plan_id" class="col-lg-4 o_light_label"
+                                       string="Accrual Plan"/>
+                                <field name="time_off_allocation_plan_id"/>
+                            </div>
+                            <div class="row mt8">
+                                <label for="carry_forward_allocation_date_from" class="col-lg-4 o_light_label"
+                                       string="Start Date"/>
+                                <field name="carry_forward_allocation_date_from" widget="date"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
