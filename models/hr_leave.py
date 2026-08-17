@@ -57,6 +57,7 @@ class HolidaysRequest(models.Model):
                 force_send=True,
                 email_values={
                     "recipient_ids": [(6, 0, unique.ids)],
+                    "email_to": False,
                 },
             )
 
