@@ -48,7 +48,91 @@ class HolidaysAllocation(models.Model):
                 if expiry_date:
                     vals["date_to"] = expiry_date
         return super().create(vals_list)
-    
+
+    @api.onchange('date_from', 'accrual_plan_id', 'date_to', 'employee_id', 'holiday_type', 'mode_company_id')
+    def _onchange_date_from(self):
+        """Simulate the accrual preview in 'By Company' mode too.
+
+        The standard implementation short-circuits as soon as there is no
+        single ``employee_id`` (which is the case for company allocations),
+        leaving the "Allocation" autocalculation at 0. For company mode we
+        run the same simulation on a representative employee of the company
+        and put the result back on the batch allocation.
+        """
+        if (
+            self.allocation_type == 'accrual'
+            and self.holiday_type == 'company'
+            and not self.employee_id
+        ):
+            if not self.date_from or self.state == 'validate' or not self.accrual_plan_id or not self.mode_company_id:
+                self.number_of_days = 0
+                return
+
+            representative = self.env['hr.employee'].search(
+                [('company_id', '=', self.mode_company_id.id)],
+                order='id',
+                limit=1,
+            )
+            if not representative:
+                self.number_of_days = 0
+                return
+
+            fake_allocation = self.env['hr.leave.allocation'].new({
+                'employee_id': representative.id,
+                'holiday_status_id': self.holiday_status_id.id,
+                'accrual_plan_id': self.accrual_plan_id.id,
+                'allocation_type': 'accrual',
+                'date_from': self.date_from,
+                'date_to': self.date_to,
+                'lastcall': self.date_from,
+                'nextcall': False,
+                'already_accrued': False,
+                'number_of_days': 0.0,
+                'number_of_days_display': 0.0,
+                'number_of_hours_display': 0.0,
+                'leaves_taken': 0.0,
+            })
+            date_to = min(self.date_to, date.today()) if self.date_to else False
+            fake_allocation.sudo()._process_accrual_plans(date_to, log=False)
+            self.number_of_days = fake_allocation.number_of_days
+            fake_allocation.invalidate_recordset()
+            return
+
+        return super()._onchange_date_from()
+
+    def _prepare_holiday_values(self, employees):
+        vals_list = super()._prepare_holiday_values(employees)
+        # For accrual allocations created in batch mode (company/department/
+        # category) each child accrues independently through the cron based on
+        # its own employee. Start them from date_from with 0 days so the cron
+        # accrues the whole validity period without double-counting the parent
+        # preview.
+        if self.allocation_type == 'accrual' and self.holiday_type != 'employee':
+            for vals in vals_list:
+                vals.update({
+                    'number_of_days': 0,
+                    'lastcall': self.date_from,
+                    'nextcall': False,
+                })
+        return vals_list
+
+    def _action_validate_create_childs(self):
+        res = super()._action_validate_create_childs()
+        # Accrue the batch children immediately using their own employee
+        # calendar, so they don't show 0 hours until the daily accrual cron
+        # runs. The create flow sets nextcall relative to today; reset it so
+        # the simulation starts from date_from.
+        for allocation in self:
+            children = allocation.linked_request_ids.filtered(
+                lambda c: c.allocation_type == 'accrual'
+            )
+            if not children:
+                continue
+            children.lastcall = allocation.date_from
+            children.nextcall = False
+            date_to = min(allocation.date_to, date.today()) if allocation.date_to else False
+            children._process_accrual_plans(date_to, log=False)
+        return res
 
     # @api.model
     # def _cron_create_carry_forward_allocations(self):
