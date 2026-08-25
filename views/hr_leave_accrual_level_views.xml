@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_leave_accrual_level_form_inherit" model="ir.ui.view">
+        <field name="name">hr.leave.accrual.level.form.inherit.infs_time_off</field>
+        <field name="model">hr.leave.accrual.level</field>
+        <field name="inherit_id" ref="hr_holidays.hr_accrual_level_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[field[@name='postpone_max_days']]" position="inside">
+                <div class="mt8">
+                    <field name="carryover_has_validity"/>
+                    <label for="carryover_has_validity" string="Carry-over validity"/>
+                </div>
+                <div invisible="not carryover_has_validity">
+                    <label for="carryover_validity_count" string="Valid for"/>
+                    <field name="carryover_validity_count" style="width: 3rem"/>
+                    <field name="carryover_validity_type" style="width: 5rem"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
