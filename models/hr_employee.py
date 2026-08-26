@@ -2,11 +2,67 @@
 
 from datetime import datetime
 
-from odoo import fields, models
+from odoo import _, fields, models
+from odoo.exceptions import UserError
 
 
 class HolidaysEmployee(models.Model):
     _inherit = "hr.employee"
+
+    def action_generate_carry_forward_allocation(self):
+        """Generate carry-forward allocation for this specific employee using settings config."""
+        self.ensure_one()
+        params = self.env["ir.config_parameter"].sudo()
+        plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
+        type_id = params.get_param("infs_time_off.time_off_type_id")
+
+        if not plan_id or not str(plan_id).isdigit():
+            raise UserError(_("Please configure the Time Off Allocation Plan in Settings > Time Off first."))
+        plan = self.env["hr.leave.accrual.plan"].browse(int(plan_id)).exists()
+        if not plan:
+            raise UserError(_("Configured accrual plan (ID %s) not found.") % plan_id)
+
+        if not type_id or not str(type_id).isdigit():
+            raise UserError(_("Please configure the Time Off Type in Settings > Time Off first."))
+        time_off_type = self.env["hr.leave.type"].browse(int(type_id)).exists()
+        if not time_off_type:
+            raise UserError(_("Configured time off type (ID %s) not found.") % type_id)
+
+        mode = params.get_param("infs_time_off.carry_forward_generation_mode", "last_year")
+        today = fields.Date.today()
+
+        allocation, message = self.env["hr.leave.allocation"]._generate_carry_forward_allocation_for_employee(
+            self, plan, time_off_type, mode, today
+        )
+        if not allocation:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Allocation Already Exists"),
+                    "message": message,
+                    "type": "warning",
+                    "sticky": False,
+                },
+            }
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Success"),
+                "message": _("Carry forward allocation '%s' successfully created for %s.") % (allocation.name, self.name),
+                "type": "success",
+                "sticky": False,
+                "next": {
+                    "type": "ir.actions.act_window",
+                    "res_model": "hr.leave.allocation",
+                    "res_id": allocation.id,
+                    "views": [[False, "form"]],
+                    "target": "current",
+                },
+            },
+        }
 
     def _get_consumed_leaves(self, leave_types, target_date=False, ignore_future=False):
         """Exclude expired allocations from the computed balances.

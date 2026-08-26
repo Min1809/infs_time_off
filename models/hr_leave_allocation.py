@@ -194,80 +194,112 @@ class HolidaysAllocation(models.Model):
             return
 
         for employee in employees:
-            company = employee.company_id or self.env.company
-            # Skip employees where the configured plan/type don't apply.
-            if plan.company_id and plan.company_id.id != company.id:
-                _logger.info(
-                    "Skipping employee %s: accrual plan '%s' belongs to a different company.",
-                    employee.name, plan.name,
-                )
-                continue
-            if time_off_type.company_id and time_off_type.company_id.id != company.id:
-                _logger.info(
-                    "Skipping employee %s: time off type '%s' belongs to a different company.",
-                    employee.name, time_off_type.name,
-                )
-                continue
-
-            # Determine contract start date from hr.contract
-            has_contract_start = False
-            contract_start_date = False
-            if "hr.contract" in self.env:
-                if hasattr(employee, "first_contract_date") and employee.first_contract_date:
-                    contract_start_date = employee.first_contract_date
-                elif hasattr(employee, "contract_id") and employee.contract_id and employee.contract_id.date_start:
-                    contract_start_date = employee.contract_id.date_start
-                if not contract_start_date:
-                    contract = self.env["hr.contract"].sudo().search([
-                        ("employee_id", "=", employee.id),
-                        ("state", "!=", "cancel"),
-                        ("date_start", "!=", False),
-                    ], order="date_start asc", limit=1)
-                    if contract and contract.date_start:
-                        contract_start_date = contract.date_start
-
-            if contract_start_date:
-                has_contract_start = True
-                date_from = contract_start_date
+            allocation, message = self._generate_carry_forward_allocation_for_employee(
+                employee, plan, time_off_type, mode, today
+            )
+            if not allocation:
+                _logger.info("Skipping employee %s: %s", employee.name, message)
             else:
-                has_contract_start = False
-                date_from = today
+                _logger.info("Generated carry-forward allocation for employee %s: %s", employee.name, allocation.name)
 
-            _logger.info(
-                "Creating carry-forward allocation for employee=%s (mode=%s, has_contract=%s): plan=%s, time_off_type=%s, "
-                "date_from=%s",
-                employee.name, mode, has_contract_start, plan.name, time_off_type.name, date_from,
+    @api.model
+    def _generate_carry_forward_allocation_for_employee(self, employee, plan, time_off_type, mode, today):
+        """Create and process carry-forward allocation for a single employee.
+
+        Checks if an active allocation already exists for this employee + plan + time_off_type,
+        and skips creation if one is found.
+        Optimizes simulation performance by fast-forwarding to the required year.
+
+        Returns tuple (allocation, message).
+        """
+        company = employee.company_id or self.env.company
+        if plan.company_id and plan.company_id.id != company.id:
+            return False, _("Accrual plan '%s' belongs to a different company.") % plan.name
+        if time_off_type.company_id and time_off_type.company_id.id != company.id:
+            return False, _("Time off type '%s' belongs to a different company.") % time_off_type.name
+
+        # Check if an active allocation already exists for this employee with the same plan and type
+        existing = self.sudo().search([
+            ("employee_id", "=", employee.id),
+            ("holiday_status_id", "=", time_off_type.id),
+            ("accrual_plan_id", "=", plan.id),
+            ("state", "in", ["confirm", "validate"]),
+        ], limit=1)
+        if existing:
+            return False, _("Allocation '%s' already exists for %s (Plan: %s, Type: %s).") % (
+                existing.name, employee.name, plan.name, time_off_type.name
             )
 
-            allocation = self.sudo().with_company(company).create({
-                "name": "%s - Carry Forward - %s" % (today.year, employee.name),
-                "private_name": "Carry Forward",
-                "holiday_status_id": time_off_type.id,
-                "accrual_plan_id": plan.id,
-                "holiday_type": "employee",
-                "employee_id": employee.id,
-                "allocation_type": "accrual",
-                "number_of_days": 0,
-                "date_from": date_from,
-                "date_to": False,
-                "carry_forward_generation_mode": mode,
-                "state": "confirm",
-            })
+        # Determine contract start date from hr.contract
+        has_contract_start = False
+        contract_start_date = False
+        if "hr.contract" in self.env:
+            if hasattr(employee, "first_contract_date") and employee.first_contract_date:
+                contract_start_date = employee.first_contract_date
+            elif hasattr(employee, "contract_id") and employee.contract_id and employee.contract_id.date_start:
+                contract_start_date = employee.contract_id.date_start
+            if not contract_start_date:
+                contract = self.env["hr.contract"].sudo().search([
+                    ("employee_id", "=", employee.id),
+                    ("state", "!=", "cancel"),
+                    ("date_start", "!=", False),
+                ], order="date_start asc", limit=1)
+                if contract and contract.date_start:
+                    contract_start_date = contract.date_start
 
-            if has_contract_start:
-                allocation.sudo().action_validate()
-                allocation.lastcall = date_from
-                allocation.nextcall = False
-                allocation._process_accrual_plans(today, log=False)
-                _logger.info(
-                    "Created and validated carry-forward allocation for employee %s: %s",
-                    employee.name, allocation.name,
-                )
+        if contract_start_date:
+            has_contract_start = True
+            date_from = contract_start_date
+        else:
+            has_contract_start = False
+            date_from = today
+
+        _logger.info(
+            "Creating carry-forward allocation for employee=%s (mode=%s, has_contract=%s): plan=%s, time_off_type=%s, "
+            "date_from=%s",
+            employee.name, mode, has_contract_start, plan.name, time_off_type.name, date_from,
+        )
+
+        allocation = self.sudo().with_company(company).create({
+            "name": "%s - Carry Forward - %s" % (today.year, employee.name),
+            "private_name": "Carry Forward",
+            "holiday_status_id": time_off_type.id,
+            "accrual_plan_id": plan.id,
+            "holiday_type": "employee",
+            "employee_id": employee.id,
+            "allocation_type": "accrual",
+            "number_of_days": 0,
+            "date_from": date_from,
+            "date_to": False,
+            "carry_forward_generation_mode": mode,
+            "state": "confirm",
+        })
+
+        if has_contract_start:
+            allocation.sudo().action_validate()
+            # Fast-forward simulation start date based on generation mode
+            # Seniority level is always computed accurately from allocation.date_from (contract start date)
+            if mode == "current_year":
+                start_sim_date = max(date_from, date(today.year, 1, 1))
+            elif mode == "last_year":
+                start_sim_date = max(date_from, date(today.year - 1, 1, 1))
             else:
-                _logger.info(
-                    "Created unvalidated carry-forward allocation for employee %s (no contract start date found, date_from=today): %s",
-                    employee.name, allocation.name,
-                )
+                start_sim_date = date_from
+
+            allocation.lastcall = start_sim_date
+            allocation.nextcall = False
+            allocation._process_accrual_plans(today, log=False)
+            _logger.info(
+                "Created and validated carry-forward allocation for employee %s: %s (simulated from %s to %s)",
+                employee.name, allocation.name, start_sim_date, today,
+            )
+        else:
+            _logger.info(
+                "Created unvalidated carry-forward allocation for employee %s (no contract start date found, date_from=today): %s",
+                employee.name, allocation.name,
+            )
+
+        return allocation, _("Successfully created allocation '%s'.") % allocation.name
 
 
 
@@ -444,14 +476,20 @@ class HolidaysAllocation(models.Model):
                 if date_to < first_level_start_date:
                     continue
                 allocation.lastcall = max(allocation.lastcall, first_level_start_date)
-                allocation.nextcall = first_level._get_next_date(allocation.lastcall)
+                (init_level, init_level_idx) = allocation._get_current_accrual_plan_level_id(allocation.lastcall)
+                current_plan_level = init_level or first_level
+                allocation.nextcall = current_plan_level._get_next_date(allocation.lastcall)
                 # adjust nextcall for carryover
                 carryover_date = allocation._get_carryover_date(allocation.nextcall)
                 allocation.nextcall = min(carryover_date, allocation.nextcall)
                 # adjust nextcall for level_transition
-                if len(level_ids) > 1:
+                if init_level_idx >= 0 and init_level_idx < len(level_ids) - 1:
+                    next_level_start_date = allocation.date_from + get_timedelta(level_ids[init_level_idx + 1].start_count, level_ids[init_level_idx + 1].start_type)
+                    allocation.nextcall = min(next_level_start_date, allocation.nextcall)
+                elif len(level_ids) > 1:
                     second_level_start_date = allocation.date_from + get_timedelta(level_ids[1].start_count, level_ids[1].start_type)
-                    allocation.nextcall = min(second_level_start_date, allocation.nextcall)
+                    if allocation.lastcall < second_level_start_date:
+                        allocation.nextcall = min(second_level_start_date, allocation.nextcall)
                 if log:
                     allocation._message_log(body=first_allocation)
             (current_level, current_level_idx) = (False, 0)

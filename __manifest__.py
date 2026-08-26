@@ -28,6 +28,7 @@ Long description of module's purpose
         'views/res_config_settings_views.xml',
         'views/hr_leave_accrual_level_views.xml',
         'views/hr_leave_allocation_views.xml',
+        'views/hr_employee_views.xml',
         'views/mail_templates.xml',
         'data/cron.xml',
     ],

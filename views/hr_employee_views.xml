@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_inherit_infs_time_off" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.infs_time_off</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_carry_forward_allocation"
+                        string="Generate Carry Forward Allocation"
+                        type="object"
+                        class="btn-secondary"
+                        groups="hr_holidays.group_hr_holidays_user"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
