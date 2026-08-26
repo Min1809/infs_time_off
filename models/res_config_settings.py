@@ -47,6 +47,21 @@ class ResConfigSettings(models.TransientModel):
         help="Validity Period start date (date_from) used when the cron creates carry-forward allocations.",
     )
 
+    carry_forward_generation_mode = fields.Selection(
+        selection=[
+            ("last_year", "Previous Year Only"),
+            ("current_year", "Current Year Only"),
+            ("all", "All Prior Years"),
+        ],
+        string="Carry Forward Generation Mode",
+        config_parameter="infs_time_off.carry_forward_generation_mode",
+        default="last_year",
+        help="Defines which carry-forward allocations to generate (allocation start date is always the employee's contract start date to compute correct accrual seniority):\n"
+             "- Previous Year Only: Creates carry-forward allocations only for the previous year.\n"
+             "- Current Year Only: Accrues at current seniority level without generating carry-forwards from prior years.\n"
+             "- All Prior Years: Generates carry-forward allocations for all historical years.",
+    )
+
     def set_values(self):
         super().set_values()
         self.env["ir.config_parameter"].sudo().set_param(

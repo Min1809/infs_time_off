@@ -21,6 +21,18 @@ class HolidaysAllocation(models.Model):
         copy=False,
         ondelete='set null',
     )
+    carry_forward_generation_mode = fields.Selection(
+        selection=[
+            ("last_year", "Previous Year Only"),
+            ("current_year", "Current Year Only"),
+            ("all", "All Prior Years"),
+        ],
+        string="Carry Forward Generation Mode",
+        default=lambda self: self.env["ir.config_parameter"].sudo().get_param(
+            "infs_time_off.carry_forward_generation_mode", "last_year"
+        ),
+        help="Defines the scope for carry-forward allocation creation.",
+    )
 
     @api.model
     def _get_carry_forward_expiry_date(self):
@@ -50,15 +62,6 @@ class HolidaysAllocation(models.Model):
             year = today.year
 
         return date(year, config_date.month, config_date.day)
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if not vals.get("date_to"):
-                expiry_date = self._get_carry_forward_expiry_date()
-                if expiry_date:
-                    vals["date_to"] = expiry_date
-        return super().create(vals_list)
 
     @api.onchange('date_from', 'accrual_plan_id', 'date_to', 'employee_id', 'holiday_type', 'mode_company_id')
     def _onchange_date_from(self):
@@ -145,87 +148,126 @@ class HolidaysAllocation(models.Model):
             children._process_accrual_plans(date_to, log=False)
         return res
 
-    # @api.model
-    # def _cron_create_carry_forward_allocations(self):
-    #     """Cron: Create yearly carry-forward allocations for all active employees.
+    @api.model
+    def _cron_create_carry_forward_allocations_per_employee(self):
+        """Cron: Create yearly carry-forward allocations for each active employee.
 
-    #     Runs on January 1st. Uses the accrual plan and expiry date from
-    #     res.config.settings to create allocations with date_from = Jan 1.
-    #     """
-    #     params = self.env["ir.config_parameter"].sudo()
-    #     is_expired = params.get_param("infs_time_off.is_carry_forward_expired") == "True"
-    #     if not is_expired:
-    #         _logger.info("Carry forward expired is disabled, skipping cron.")
-    #         return
+        Uses the accrual plan and expiry date from res.config.settings to create
+        one allocation per employee (holiday_type='employee').
+        - If the employee has an hr.contract start date: sets date_from to the
+          contract start date and auto-validates the allocation.
+        - If the employee has NO contract or NO contract start date: falls back to
+          today as date_from and leaves the allocation unvalidated (to approve).
+        """
+        params = self.env["ir.config_parameter"].sudo()
+        is_expired = params.get_param("infs_time_off.is_carry_forward_expired") == "True"
+        if not is_expired:
+            _logger.info("Carry forward expired is disabled, skipping employee cron.")
+            return
 
-    #     plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
-    #     _logger.info("Cron: read plan_id from config = %r", plan_id)
-    #     if not plan_id or plan_id == "False":
-    #         _logger.info("No allocation plan configured in settings, skipping cron.")
-    #         return
+        plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
+        if not plan_id or not str(plan_id).isdigit():
+            _logger.info("No allocation plan configured in settings, skipping employee cron.")
+            return
 
-    #     plan = self.env["hr.leave.accrual.plan"].browse(int(plan_id)).exists()
-    #     _logger.info("Cron: looked up plan = %s", plan)
-    #     if not plan:
-    #         _logger.info("Accrual plan with id=%s not found, skipping cron.", plan_id)
-    #         return
+        plan = self.env["hr.leave.accrual.plan"].browse(int(plan_id)).exists()
+        if not plan:
+            _logger.info("Accrual plan with id=%s not found, skipping employee cron.", plan_id)
+            return
 
-    #     type_id = params.get_param("infs_time_off.time_off_type_id")
-    #     _logger.info("Cron: read time_off_type_id from config = %r", type_id)
-    #     if not type_id or type_id == "False":
-    #         _logger.info("No time off type configured in settings, skipping cron.")
-    #         return
+        type_id = params.get_param("infs_time_off.time_off_type_id")
+        if not type_id or not str(type_id).isdigit():
+            _logger.info("No time off type configured in settings, skipping employee cron.")
+            return
 
-    #     time_off_type = self.env["hr.leave.type"].browse(int(type_id)).exists()
-    #     _logger.info("Cron: looked up time_off_type = %s", time_off_type.name if time_off_type else "N/A")
-    #     if not time_off_type:
-    #         _logger.info("Time off type with id=%s not found, skipping cron.", type_id)
-    #         return
+        time_off_type = self.env["hr.leave.type"].browse(int(type_id)).exists()
+        if not time_off_type:
+            _logger.info("Time off type with id=%s not found, skipping employee cron.", type_id)
+            return
 
-    #     expiry_date = self._get_carry_forward_expiry_date()
-    #     today = date.today()
+        today = date.today()
+        mode = params.get_param("infs_time_off.carry_forward_generation_mode", "last_year")
 
-    #     date_from_str = params.get_param("infs_time_off.carry_forward_allocation_date_from")
-    #     if date_from_str:
-    #         date_from = fields.Datetime.from_string(date_from_str).date()
-    #     else:
-    #         date_from = today
+        employees = self.env["hr.employee"].sudo().search([("active", "=", True)])
+        if not employees:
+            _logger.info("No active employees found, skipping employee cron.")
+            return
 
-    #     companies = self.env["res.company"].sudo().search([])
-    #     if not companies:
-    #         _logger.info("No companies found, skipping cron.")
-    #         return
+        for employee in employees:
+            company = employee.company_id or self.env.company
+            # Skip employees where the configured plan/type don't apply.
+            if plan.company_id and plan.company_id.id != company.id:
+                _logger.info(
+                    "Skipping employee %s: accrual plan '%s' belongs to a different company.",
+                    employee.name, plan.name,
+                )
+                continue
+            if time_off_type.company_id and time_off_type.company_id.id != company.id:
+                _logger.info(
+                    "Skipping employee %s: time off type '%s' belongs to a different company.",
+                    employee.name, time_off_type.name,
+                )
+                continue
 
-    #     employees = self.env["hr.employee"].sudo().search([("active", "=", True)])
-    #     if not employees:
-    #         _logger.info("No active employees found, skipping cron.")
-    #         return
+            # Determine contract start date from hr.contract
+            has_contract_start = False
+            contract_start_date = False
+            if "hr.contract" in self.env:
+                if hasattr(employee, "first_contract_date") and employee.first_contract_date:
+                    contract_start_date = employee.first_contract_date
+                elif hasattr(employee, "contract_id") and employee.contract_id and employee.contract_id.date_start:
+                    contract_start_date = employee.contract_id.date_start
+                if not contract_start_date:
+                    contract = self.env["hr.contract"].sudo().search([
+                        ("employee_id", "=", employee.id),
+                        ("state", "!=", "cancel"),
+                        ("date_start", "!=", False),
+                    ], order="date_start asc", limit=1)
+                    if contract and contract.date_start:
+                        contract_start_date = contract.date_start
 
-    #     _logger.info(
-    #         "Creating one carry-forward allocation: plan=%s, time_off_type=%s, date_from=%s, date_to=%s, employees=%s",
-    #         plan.name, time_off_type.name, date_from, expiry_date, len(employees),
-    #     )
+            if contract_start_date:
+                has_contract_start = True
+                date_from = contract_start_date
+            else:
+                has_contract_start = False
+                date_from = today
 
-    #     allocation = self.sudo().create({
-    #         "name": "%s - Carry Forward" % today.year,
-    #         "holiday_status_id": time_off_type.id,
-    #         "accrual_plan_id": plan.id,
-    #         "allocation_type": "accrual",
-    #         "multi_employee": True,
-    #         "number_of_days": 0,
-    #         "date_from": date_from,
-    #         "date_to": expiry_date,
-    #         "state": "confirm",
-    #     })
-    #     # Set employee_ids and number_of_days after creation to avoid
-    #     # computed-field overrides during the create flow.
-    #     allocation.sudo().write({
-    #         "employee_ids": [(6, 0, employees.ids)],
-    #         "number_of_days": 0,
-    #     })
-    #     _logger.info("Created carry-forward allocation: %s", allocation.name)
-    #     # Validate allocation automatically
-    #     allocation.sudo().action_validate()
+            _logger.info(
+                "Creating carry-forward allocation for employee=%s (mode=%s, has_contract=%s): plan=%s, time_off_type=%s, "
+                "date_from=%s",
+                employee.name, mode, has_contract_start, plan.name, time_off_type.name, date_from,
+            )
+
+            allocation = self.sudo().with_company(company).create({
+                "name": "%s - Carry Forward - %s" % (today.year, employee.name),
+                "private_name": "Carry Forward",
+                "holiday_status_id": time_off_type.id,
+                "accrual_plan_id": plan.id,
+                "holiday_type": "employee",
+                "employee_id": employee.id,
+                "allocation_type": "accrual",
+                "number_of_days": 0,
+                "date_from": date_from,
+                "date_to": False,
+                "carry_forward_generation_mode": mode,
+                "state": "confirm",
+            })
+
+            if has_contract_start:
+                allocation.sudo().action_validate()
+                allocation.lastcall = date_from
+                allocation.nextcall = False
+                allocation._process_accrual_plans(today, log=False)
+                _logger.info(
+                    "Created and validated carry-forward allocation for employee %s: %s",
+                    employee.name, allocation.name,
+                )
+            else:
+                _logger.info(
+                    "Created unvalidated carry-forward allocation for employee %s (no contract start date found, date_from=today): %s",
+                    employee.name, allocation.name,
+                )
 
 
 
@@ -265,6 +307,7 @@ class HolidaysAllocation(models.Model):
 
         expiry_date = self._get_carry_forward_expiry_date()
         today = date.today()
+        mode = params.get_param("infs_time_off.carry_forward_generation_mode", "last_year")
 
         date_from_str = params.get_param("infs_time_off.carry_forward_allocation_date_from")
         if date_from_str:
@@ -310,6 +353,7 @@ class HolidaysAllocation(models.Model):
                 "number_of_days": 0,
                 "date_from": date_from,
                 "date_to": expiry_date,
+                "carry_forward_generation_mode": mode,
                 "state": "confirm",
             })
             allocation.sudo().action_validate()
@@ -432,7 +476,14 @@ class HolidaysAllocation(models.Model):
                     allocation_max_days = min(postpone_max_days, allocated_days_left)
                     if allocation_max_days > 0:
                         if allocation.state == 'validate':
-                            allocation._create_carryover_allocation(previous_level, allocation_max_days, allocation.lastcall)
+                            mode = allocation.carry_forward_generation_mode or 'last_year'
+                            should_create = (
+                                mode == 'all'
+                                or (mode == 'last_year' and allocation.lastcall.year >= (date_to.year - 1))
+                                or (mode == 'current_year' and allocation.lastcall.year >= date_to.year)
+                            )
+                            if should_create:
+                                allocation._create_carryover_allocation(previous_level, allocation_max_days, allocation.lastcall)
                         allocation.number_of_days = leaves_taken
                 if current_level.cap_accrued_time:
                     current_level_maximum_leave = current_level.maximum_leave if current_level.added_value_type == "day" else current_level.maximum_leave / (allocation.employee_id.sudo().resource_id.calendar_id.hours_per_day or HOURS_PER_DAY)
@@ -465,7 +516,14 @@ class HolidaysAllocation(models.Model):
                             allocation_max_days = min(postpone_max_days, allocated_days_left)
                         if current_level.carryover_has_validity and allocation_max_days > 0:
                             if allocation.state == 'validate':
-                                allocation._create_carryover_allocation(current_level, allocation_max_days, carryover_date)
+                                mode = allocation.carry_forward_generation_mode or 'last_year'
+                                should_create = (
+                                    mode == 'all'
+                                    or (mode == 'last_year' and carryover_date.year >= (date_to.year - 1))
+                                    or (mode == 'current_year' and carryover_date.year >= date_to.year)
+                                )
+                                if should_create:
+                                    allocation._create_carryover_allocation(current_level, allocation_max_days, carryover_date)
                             allocation.number_of_days = leaves_taken
                         else:
                             allocation.number_of_days = min(allocation.number_of_days, allocation_max_days) + leaves_taken

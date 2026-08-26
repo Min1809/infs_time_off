@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_leave_allocation_view_form_inherit_infs_time_off" model="ir.ui.view">
+        <field name="name">hr.leave.allocation.view.form.inherit.infs_time_off</field>
+        <field name="model">hr.leave.allocation</field>
+        <field name="inherit_id" ref="hr_holidays.hr_leave_allocation_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='accrual_plan_id']" position="after">
+                <field name="carry_forward_generation_mode" invisible="allocation_type != 'accrual'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -45,6 +45,11 @@
                                 <field name="carry_forward_allocation_date_from" widget="date"/>
                             </div>
                         </setting>
+                        <setting id="carry_forward_generation_mode_setting"
+                                 title="Carry Forward Generation Mode"
+                                 help="Choose whether carry-forward allocations cover only the previous year, current year only, or all prior years.">
+                            <field name="carry_forward_generation_mode"/>
+                        </setting>
                     </block>
                 </app>
             </xpath>
