@@ -60,14 +60,25 @@ class ResConfigSettings(models.TransientModel):
 
     def get_values(self):
         res = super().get_values()
-        plan_id = self.env["ir.config_parameter"].sudo().get_param(
-            "infs_time_off.time_off_allocation_plan_id"
-        )
-        type_id = self.env["ir.config_parameter"].sudo().get_param(
-            "infs_time_off.time_off_type_id"
-        )
+        params = self.env["ir.config_parameter"].sudo()
+
+        plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
+        type_id = params.get_param("infs_time_off.time_off_type_id")
+
+        plan = False
+        if plan_id and str(plan_id).isdigit():
+            plan = self.env["hr.leave.accrual.plan"].browse(int(plan_id)).exists()
+            if not plan:
+                params.set_param("infs_time_off.time_off_allocation_plan_id", "")
+
+        time_off_type = False
+        if type_id and str(type_id).isdigit():
+            time_off_type = self.env["hr.leave.type"].browse(int(type_id)).exists()
+            if not time_off_type:
+                params.set_param("infs_time_off.time_off_type_id", "")
+
         res.update(
-            time_off_allocation_plan_id=int(plan_id) if plan_id else False,
-            time_off_type_id=int(type_id) if type_id else False,
+            time_off_allocation_plan_id=plan.id if plan else False,
+            time_off_type_id=time_off_type.id if time_off_type else False,
         )
         return res

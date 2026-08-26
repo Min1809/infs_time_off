@@ -244,7 +244,7 @@ class HolidaysAllocation(models.Model):
             return
 
         plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
-        if not plan_id or plan_id == "False":
+        if not plan_id or not str(plan_id).isdigit():
             _logger.info("No allocation plan configured in settings, skipping cron.")
             return
 
@@ -254,7 +254,7 @@ class HolidaysAllocation(models.Model):
             return
 
         type_id = params.get_param("infs_time_off.time_off_type_id")
-        if not type_id or type_id == "False":
+        if not type_id or not str(type_id).isdigit():
             _logger.info("No time off type configured in settings, skipping cron.")
             return
 
