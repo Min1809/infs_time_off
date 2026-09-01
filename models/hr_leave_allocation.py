@@ -6,6 +6,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.addons.resource.models.utils import HOURS_PER_DAY
 from odoo.tools.date_utils import get_timedelta
 
@@ -147,6 +148,88 @@ class HolidaysAllocation(models.Model):
             date_to = min(allocation.date_to, date.today()) if allocation.date_to else False
             children._process_accrual_plans(date_to, log=False)
         return res
+
+    def _get_other_allocated_days(self, employee, leave_type):
+        """Return total active allocated days/hours for the employee on this leave type, excluding self."""
+        if not employee or not leave_type:
+            return 0.0
+        allocations = self.env['hr.leave.allocation'].sudo().search([
+            ('employee_id', '=', employee.id),
+            ('holiday_status_id', '=', leave_type.id),
+            ('state', '=', 'validate'),
+            ('id', '!=', self.id or 0),
+        ]).filtered(lambda a: not a.date_to or a.date_to >= fields.Date.today())
+        field_name = 'number_of_hours_display' if leave_type.request_unit == 'hour' else 'number_of_days'
+        return sum(allocations.mapped(field_name))
+
+    def _add_days_to_allocation(self, current_level, current_level_maximum_leave, leaves_taken, period_start, period_end):
+        super()._add_days_to_allocation(current_level, current_level_maximum_leave, leaves_taken, period_start, period_end)
+        # Enforce Leave Type Max Cap
+        if self.holiday_status_id.has_max_cap and self.holiday_status_id.max_cap > 0 and self.employee_id:
+            other_days = self._get_other_allocated_days(self.employee_id, self.holiday_status_id)
+            max_allowed = max(0.0, self.holiday_status_id.max_cap - other_days)
+            self.number_of_days = min(self.number_of_days, max_allowed + leaves_taken)
+
+    def action_validate(self):
+        for allocation in self:
+            if (
+                allocation.holiday_type == 'employee'
+                and allocation.employee_id
+                and allocation.holiday_status_id.has_max_cap
+                and allocation.holiday_status_id.max_cap > 0
+            ):
+                other_days = allocation._get_other_allocated_days(allocation.employee_id, allocation.holiday_status_id)
+                max_allowed = max(0.0, allocation.holiday_status_id.max_cap - other_days)
+                field_name = 'number_of_hours_display' if allocation.holiday_status_id.request_unit == 'hour' else 'number_of_days'
+                current_days = getattr(allocation, field_name)
+                unit_label = _('hours') if allocation.holiday_status_id.request_unit == 'hour' else _('days')
+                if current_days > max_allowed:
+                    if max_allowed <= 0:
+                        raise UserError(_(
+                            "Employee %(employee)s has already reached the maximum allocation cap of %(cap)s %(unit)s for %(type)s.",
+                            employee=allocation.employee_id.name,
+                            cap=allocation.holiday_status_id.max_cap,
+                            unit=unit_label,
+                            type=allocation.holiday_status_id.name,
+                        ))
+                    setattr(allocation, field_name, max_allowed)
+                    allocation.number_of_days = max_allowed
+                    allocation.message_post(body=_(
+                        "Allocation amount was automatically capped to %(capped)s %(unit)s to comply with the Max Cap (%(cap)s %(unit)s) of %(type)s.",
+                        capped=max_allowed,
+                        unit=unit_label,
+                        cap=allocation.holiday_status_id.max_cap,
+                        type=allocation.holiday_status_id.name,
+                    ))
+        return super().action_validate()
+
+    @api.onchange('holiday_status_id', 'employee_id', 'number_of_days_display')
+    def _onchange_max_cap_warning(self):
+        if (
+            self.employee_id
+            and self.holiday_status_id
+            and self.holiday_status_id.has_max_cap
+            and self.holiday_status_id.max_cap > 0
+        ):
+            other_days = self._get_other_allocated_days(self.employee_id, self.holiday_status_id)
+            max_allowed = max(0.0, self.holiday_status_id.max_cap - other_days)
+            field_name = 'number_of_hours_display' if self.holiday_status_id.request_unit == 'hour' else 'number_of_days_display'
+            current_days = getattr(self, field_name)
+            unit_label = _('hours') if self.holiday_status_id.request_unit == 'hour' else _('days')
+            if current_days > max_allowed:
+                return {
+                    'warning': {
+                        'title': _("Max Cap Exceeded"),
+                        'message': _(
+                            "The maximum allocation cap for %(type)s is %(cap)s %(unit)s. This employee already has %(allocated)s %(unit)s allocated. Only %(allowed)s %(unit)s can be added.",
+                            type=self.holiday_status_id.name,
+                            cap=self.holiday_status_id.max_cap,
+                            unit=unit_label,
+                            allocated=other_days,
+                            allowed=max_allowed,
+                        )
+                    }
+                }
 
     @api.model
     def _cron_create_carry_forward_allocations_per_employee(self):

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="edit_holiday_status_form_inherit_infs_time_off" model="ir.ui.view">
+        <field name="name">hr.leave.type.form.inherit.infs_time_off</field>
+        <field name="model">hr.leave.type</field>
+        <field name="inherit_id" ref="hr_holidays.edit_holiday_status_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='negative_cap']" position="after">
+                <group name="max_cap" id="max_cap"
+                       string="Maximum Allocation Cap"
+                       invisible="requires_allocation == 'no'">
+                    <field name="has_max_cap"/>
+                    <field name="max_cap"
+                           class="o_hr_narrow_field"
+                           invisible="not has_max_cap"
+                           required="requires_allocation == 'yes' and has_max_cap"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

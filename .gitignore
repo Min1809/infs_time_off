@@ -1,6 +1,7 @@
 # Project-specific
 note.txt
-
+.bak
+.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -36,3 +37,4 @@ Thumbs.db
 
 # Environment
 .env
+

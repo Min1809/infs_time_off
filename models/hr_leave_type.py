@@ -10,6 +10,15 @@ from odoo.addons.resource.models.utils import HOURS_PER_DAY
 class HolidaysLeaveType(models.Model):
     _inherit = "hr.leave.type"
 
+    has_max_cap = fields.Boolean(
+        string="Limit Maximum Allocation",
+        help="If checked, total active allocated leaves for an employee under this time off type cannot exceed Max Cap.",
+    )
+    max_cap = fields.Float(
+        string="Max Cap",
+        help="Maximum total active allocation allowed for an employee under this time off type across all allocations (direct and accrual).",
+    )
+
     def get_allocation_data(self, employees, target_date=None):
         """Override to add duration_display and per-allocation expiry details."""
         allocation_data = super().get_allocation_data(employees, target_date)
@@ -34,6 +43,15 @@ class HolidaysLeaveType(models.Model):
                     data = leave_type_data[1] if len(leave_type_data) > 1 else {}
                     leave_type_id = leave_type_data[3] if len(leave_type_data) > 3 else False
                     leave_type = self.browse(leave_type_id)
+
+                    # Enforce max_cap on displayed remaining leaves
+                    if leave_type.has_max_cap and leave_type.max_cap > 0:
+                        if data.get("virtual_remaining_leaves", 0) > leave_type.max_cap:
+                            data["virtual_remaining_leaves"] = leave_type.max_cap
+                        if data.get("remaining_leaves", 0) > leave_type.max_cap:
+                            data["remaining_leaves"] = leave_type.max_cap
+                        if data.get("max_leaves", 0) > leave_type.max_cap:
+                            data["max_leaves"] = leave_type.max_cap
 
                     if data.get("request_unit") in ("day", "half_day"):
                         duration = data.get("virtual_remaining_leaves", 0)

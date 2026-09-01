@@ -1,0 +1,71 @@
+================================================================================
+              TIME OFF MODULE - APPROVER USER MANUAL
+           (Reviewing Pending Requests & Approval Email Examples)
+================================================================================
+
+1. EMAIL NOTIFICATION: REVIEWING NEW LEAVE REQUESTS
+--------------------------------------------------------------------------------
+1. Check your email inbox:
+   - When an employee submits a leave request, you will receive an automated 
+     email: "Time Off Request: [Employee Name]".
+   - The email contains a request summary:
+     * Employee Name
+     * Leave Type (e.g. Paid Time Off, Sick Leave)
+     * From Date and To Date
+     * Duration (e.g. 2 days 4 hours)
+     * Description / Reason
+2. Click the "View Request ->" button inside the email to open the request 
+   directly in Odoo.
+
+[IMAGE PLACEHOLDER: Email Notification Sample - Request Pending Approval]
+
+
+2. ACCESSING PENDING REQUESTS IN ODOO
+--------------------------------------------------------------------------------
+1. Open the "Time Off" app from the main menu.
+2. Navigate to "Management" -> "Time Off" (or Approvals).
+3. Filter the list by "To Approve" or "Second Approval Needed".
+4. Click on any request to open and review it.
+
+[IMAGE PLACEHOLDER: Time Off Approvals List - Pending Requests]
+
+
+3. REVIEWING LEAVE REQUEST DETAILS
+--------------------------------------------------------------------------------
+On the leave request form, verify the following:
+- Employee Name: Confirms who requested the leave.
+- Time Off Type: Ensures the correct leave category is selected.
+- Dates & Duration: Displays the exact date range and calculated duration.
+- Description: Notes or reason entered by the employee.
+- Available Balance: Verifies the employee has enough remaining leave days/hours.
+
+[IMAGE PLACEHOLDER: Leave Request Form - Reviewing Details]
+
+
+4. TAKING ACTION: APPROVING OR REFUSING
+--------------------------------------------------------------------------------
+1. To Approve:
+   - Click "Approve" (or "Validate") in the top action bar.
+   - Single Approval: The request is confirmed and approved. The employee receives 
+     an automated confirmation email ("Time Off Approved").
+   - Two-Level Approval: The direct manager clicks "Approve" -> Status moves to 
+     "Second Approval Needed". The HR Officer receives an email notification 
+     and clicks "Validate" for final approval.
+
+2. To Refuse (Reject):
+   - Click "Refuse" in the top action bar.
+   - Status changes to "Refused". The employee receives an automated email 
+     notification ("Time Off Refused").
+
+[IMAGE PLACEHOLDER: Action Buttons - Approve / Validate / Refuse]
+
+
+5. TWO-STEP APPROVAL & EMAIL NOTIFICATIONS SUMMARY
+--------------------------------------------------------------------------------
+- First Approver Email: Sent to direct manager upon employee submission.
+- Second Approver Email: Sent to HR Officer once the first manager approves.
+- Employee Confirmation Email: Sent to employee upon final approval or refusal.
+
+[IMAGE PLACEHOLDER: Second Approval and Employee Confirmation Email Samples]
+
+================================================================================

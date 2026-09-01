@@ -94,31 +94,50 @@ class HolidaysEmployee(models.Model):
         return allocations_leaves_consumed, extra
 
     def _get_remaining_leaves(self):
-        """Return the remaining leaves per employee, excluding expired allocations.
+        """Return the remaining leaves per employee, excluding expired allocations and respecting max_cap.
 
         Overrides the native SQL which sums every validated allocation without
         taking ``date_to`` into account, so expired allocations (e.g. carried-over
         allocations with a validity period) are not part of the total balance.
+        Also enforces ``max_cap`` if configured on the time off type.
         """
+        if not self.ids:
+            return {}
         self._cr.execute("""
             SELECT
-                sum(h.number_of_days) AS days,
-                h.employee_id
+                sum(
+                    CASE
+                        WHEN s.has_max_cap = true AND s.max_cap > 0
+                        THEN LEAST(h_total.days, s.max_cap)
+                        ELSE h_total.days
+                    END
+                ) AS days,
+                h_total.employee_id
             FROM
                 (
-                    SELECT holiday_status_id, number_of_days,
-                        state, employee_id, date_to
-                    FROM hr_leave_allocation
-                    UNION ALL
-                    SELECT holiday_status_id, (number_of_days * -1) as number_of_days,
-                        state, employee_id, NULL AS date_to
-                    FROM hr_leave
-                ) h
-                join hr_leave_type s ON (s.id = h.holiday_status_id)
+                    SELECT
+                        h.holiday_status_id,
+                        h.employee_id,
+                        sum(h.number_of_days) AS days
+                    FROM
+                        (
+                            SELECT holiday_status_id, number_of_days,
+                                state, employee_id, date_to
+                            FROM hr_leave_allocation
+                            UNION ALL
+                            SELECT holiday_status_id, (number_of_days * -1) as number_of_days,
+                                state, employee_id, NULL AS date_to
+                            FROM hr_leave
+                        ) h
+                    WHERE
+                        h.employee_id in %s AND
+                        (h.date_to IS NULL OR h.date_to >= %s) AND
+                        h.state = 'validate'
+                    GROUP BY h.holiday_status_id, h.employee_id
+                ) h_total
+                JOIN hr_leave_type s ON (s.id = h_total.holiday_status_id)
             WHERE
-                s.active = true AND h.state = 'validate' AND
-                s.requires_allocation = 'yes' AND
-                (h.date_to IS NULL OR h.date_to >= %s) AND
-                h.employee_id in %s
-            GROUP BY h.employee_id""", (fields.Date.today(), tuple(self.ids)))
+                s.active = true AND
+                s.requires_allocation = 'yes'
+            GROUP BY h_total.employee_id""", (tuple(self.ids), fields.Date.today()))
         return {row['employee_id']: row['days'] for row in self._cr.dictfetchall()}

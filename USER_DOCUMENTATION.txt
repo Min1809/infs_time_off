@@ -1,0 +1,57 @@
+================================================================================
+                    TIME OFF MODULE - END USER MANUAL
+================================================================================
+
+1. HOW TO VIEW YOUR LEAVE BALANCE & DASHBOARD
+--------------------------------------------------------------------------------
+1. Click the App Menu in the top-left and select "Time Off".
+2. On your dashboard, check your leave cards:
+   - Available Balance: Shows your balance in days and hours (e.g. 4 days 4 hours).
+   - Expiration Notice: Shows carry-forward leaves and expiry date (e.g. 3 days valid until 30-04-2027).
+   - Details: Click the info icon on the card to see the breakdown of your allocations.
+
+[IMAGE PLACEHOLDER: Time Off Dashboard and Leave Cards]
+
+
+2. HOW TO REQUEST / SUBMIT A LEAVE
+--------------------------------------------------------------------------------
+1. From the Time Off dashboard, click "New" (or click and drag on the calendar).
+2. Select "Time Off Type" (e.g. Paid Time Off, Sick Leave).
+3. Select the dates:
+   - Choose "From" and "To" dates.
+   - For half days, select "Half Day" (Morning / Afternoon).
+4. Enter a reason in the "Description" field.
+5. Click "Save" to submit your request.
+
+[IMAGE PLACEHOLDER: New Time Off Request Form]
+
+
+3. HOW TO TRACK YOUR REQUEST STATUS
+--------------------------------------------------------------------------------
+1. Go to "My Time Off" -> "My Requests" (or check your dashboard calendar).
+2. Check the status column:
+   - To Approve: Waiting for your manager to review.
+   - Second Approval: Approved by manager, waiting for HR validation.
+   - Approved: Your leave is approved and confirmed.
+   - Refused: Your request was rejected.
+
+[IMAGE PLACEHOLDER: My Requests List View]
+
+
+4. EMAIL NOTIFICATIONS
+--------------------------------------------------------------------------------
+- When your request is approved, you will receive an email: "Time Off Approved".
+- When your request is refused, you will receive an email: "Time Off Refused".
+
+[IMAGE PLACEHOLDER: Approval and Refusal Email Samples]
+
+
+5. HOW TO EDIT OR CANCEL A REQUEST
+--------------------------------------------------------------------------------
+- Before Approval (Status: "To Approve"):
+  Click on your request, edit the dates/details, or click "Delete".
+
+- After Approval (Status: "Approved"):
+  Contact your manager or HR department to cancel or modify an approved leave.
+
+================================================================================

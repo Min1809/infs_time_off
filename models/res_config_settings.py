@@ -62,6 +62,18 @@ class ResConfigSettings(models.TransientModel):
              "- All Prior Years: Generates carry-forward allocations for all historical years.",
     )
 
+    time_off_mail_server_id = fields.Many2one(
+        "ir.mail_server",
+        string="Time Off Outgoing Mail Server",
+        help="Explicitly route all Time Off notification emails through this outgoing mail server.",
+    )
+
+    time_off_notification_email_from = fields.Char(
+        string="Time Off Sender Email Address",
+        config_parameter="infs_time_off.time_off_notification_email_from",
+        help="Custom 'From' email address used for Time Off notification emails (e.g. crm@infinitytisuccess.com). If empty, the mail server SMTP user or company email is used.",
+    )
+
     def set_values(self):
         super().set_values()
         self.env["ir.config_parameter"].sudo().set_param(
@@ -72,6 +84,10 @@ class ResConfigSettings(models.TransientModel):
             "infs_time_off.time_off_type_id",
             self.time_off_type_id.id or "",
         )
+        self.env["ir.config_parameter"].sudo().set_param(
+            "infs_time_off.time_off_mail_server_id",
+            self.time_off_mail_server_id.id or "",
+        )
 
     def get_values(self):
         res = super().get_values()
@@ -79,6 +95,7 @@ class ResConfigSettings(models.TransientModel):
 
         plan_id = params.get_param("infs_time_off.time_off_allocation_plan_id")
         type_id = params.get_param("infs_time_off.time_off_type_id")
+        mail_server_id = params.get_param("infs_time_off.time_off_mail_server_id")
 
         plan = False
         if plan_id and str(plan_id).isdigit():
@@ -92,8 +109,15 @@ class ResConfigSettings(models.TransientModel):
             if not time_off_type:
                 params.set_param("infs_time_off.time_off_type_id", "")
 
+        mail_server = False
+        if mail_server_id and str(mail_server_id).isdigit():
+            mail_server = self.env["ir.mail_server"].browse(int(mail_server_id)).exists()
+            if not mail_server:
+                params.set_param("infs_time_off.time_off_mail_server_id", "")
+
         res.update(
             time_off_allocation_plan_id=plan.id if plan else False,
             time_off_type_id=time_off_type.id if time_off_type else False,
+            time_off_mail_server_id=mail_server.id if mail_server else False,
         )
         return res

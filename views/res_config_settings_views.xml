@@ -51,6 +51,18 @@
                             <field name="carry_forward_generation_mode"/>
                         </setting>
                     </block>
+                    <block title="Notifications &amp; Email" name="time_off_email_notification_container">
+                        <setting id="time_off_mail_server_setting"
+                                 title="Outgoing Mail Server"
+                                 help="Explicitly route all Time Off email notifications through this outgoing mail server.">
+                            <field name="time_off_mail_server_id"/>
+                        </setting>
+                        <setting id="time_off_notification_email_from_setting"
+                                 title="Sender Email Address (From)"
+                                 help="Specific email address used as 'From' for Time Off notification emails (e.g. crm@infinitytisuccess.com). If empty, the mail server SMTP user or company email is used.">
+                            <field name="time_off_notification_email_from" placeholder="e.g. crm@infinitytisuccess.com"/>
+                        </setting>
+                    </block>
                 </app>
             </xpath>
         </field>

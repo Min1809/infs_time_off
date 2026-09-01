@@ -31,35 +31,90 @@ class HolidaysRequest(models.Model):
         """Send a leave notification email using the specified mail template."""
         template = self.env.ref("infs_time_off.%s" % template_xmlid, raise_if_not_found=False)
         if not template or not recipient_partner_ids:
+            _logger.warning(
+                "SKIP LEAVE EMAIL: template=%s or recipient_partner_ids=%s missing",
+                template_xmlid,
+                recipient_partner_ids,
+            )
             return
 
         partners = self.env["res.partner"].browse(recipient_partner_ids).exists()
         if not partners:
+            _logger.warning("SKIP LEAVE EMAIL: no existing partner found for IDs %s", recipient_partner_ids)
             return
 
         # Deduplicate by email to prevent sending twice to the same person
         seen = set()
         unique = self.env["res.partner"]
         for p in partners:
-            email = p.email_normalized
+            email = p.email_normalized or p.email
             if email and email not in seen:
                 seen.add(email)
                 unique |= p
 
-        emails = ",".join(unique.mapped("email"))
-        _logger.info(
-            "SENDING LEAVE EMAIL: template=%s, leave_ids=%s, to=%s, emails=%s",
-            template_xmlid, self.ids, unique.mapped("name"), emails,
-        )
-        for leave in self:
-            template.send_mail(
-                leave.id,
-                force_send=True,
-                email_values={
-                    "recipient_ids": [(6, 0, unique.ids)],
-                    "email_to": False,
-                },
+        if not unique:
+            _logger.warning(
+                "SKIP LEAVE EMAIL: partners %s (IDs: %s) have no valid email address",
+                partners.mapped("name"),
+                partners.ids,
             )
+            return
+
+        emails = ",".join(unique.mapped("email"))
+
+        # Retrieve configured mail server and sender address from settings
+        params = self.env["ir.config_parameter"].sudo()
+        server_param = params.get_param("infs_time_off.time_off_mail_server_id")
+        email_from_param = params.get_param("infs_time_off.time_off_notification_email_from")
+
+        mail_server_id = int(server_param) if server_param and str(server_param).isdigit() else False
+        mail_server = self.env["ir.mail_server"].browse(mail_server_id).exists() if mail_server_id else False
+
+        for leave in self:
+            email_values = {
+                "recipient_ids": [(6, 0, unique.ids)],
+                "email_to": False,
+                "auto_delete": False,  # Retain in Settings > Technical > Emails for tracking
+            }
+
+            if mail_server:
+                email_values["mail_server_id"] = mail_server.id
+
+            # Determine sender email address
+            sender_email = (
+                email_from_param
+                or (mail_server and (mail_server.smtp_user or mail_server.from_filter))
+                or (leave.employee_company_id and leave.employee_company_id.partner_id.email)
+                or (leave.company_id and leave.company_id.partner_id.email)
+            )
+            if sender_email:
+                email_values["email_from"] = sender_email
+
+            _logger.info(
+                "SENDING LEAVE EMAIL: template=%s, leave_id=%s, server=%s, from=%s, to=%s, emails=%s",
+                template_xmlid,
+                leave.id,
+                mail_server.name if mail_server else "Default",
+                email_values.get("email_from", "N/A"),
+                unique.mapped("name"),
+                emails,
+            )
+
+            try:
+                mail_id = template.send_mail(
+                    leave.id,
+                    force_send=True,
+                    raise_exception=True,
+                    email_values=email_values,
+                )
+                _logger.info("LEAVE EMAIL SENT SUCCESSFULLY: mail_id=%s, leave_id=%s", mail_id, leave.id)
+            except Exception as e:
+                _logger.exception(
+                    "FAILED TO SEND LEAVE EMAIL: template=%s, leave_id=%s, error=%s",
+                    template_xmlid,
+                    leave.id,
+                    str(e),
+                )
 
     def _get_approver_partners(self):
         """Return the appropriate approver partner(s) based on validation type and current state."""

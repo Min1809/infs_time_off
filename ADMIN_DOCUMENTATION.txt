@@ -1,0 +1,74 @@
+================================================================================
+              TIME OFF MODULE - ADMIN & APPROVER USER MANUAL
+================================================================================
+
+1. HOW TO REVIEW AND APPROVE LEAVE REQUESTS (FOR MANAGERS & HR)
+--------------------------------------------------------------------------------
+1. Check your email:
+   - When an employee submits a leave, you will receive an email notification.
+   - Click "View Request ->" in the email to open the request directly.
+   - Or go to "Time Off" -> "Management" -> "Time Off" (or Approvals).
+2. Review the request details (employee name, leave type, dates, duration, reason).
+3. Take action:
+   - To Approve: Click "Approve" (or "Validate").
+     * Note: If 2-step approval is enabled, the direct manager approves first, then the HR officer validates second.
+   - To Reject: Click "Refuse". The employee will receive an automated email notification.
+
+[IMAGE PLACEHOLDER: Leave Request Approval Screen]
+
+
+2. HOW TO CONFIGURE CARRY-FORWARD & EXPIRY SETTINGS (FOR ADMIN)
+--------------------------------------------------------------------------------
+1. Go to "Settings" -> "General Settings" -> scroll down to "Time Off".
+2. Configure the settings:
+   - Carry Forward Expiry: Check the box to enable automatic expiry.
+   - Expiry Date: Set the expiration date (e.g. 30 April).
+   - Expiry Year: Select "Current Year" or "Next Year".
+   - Time Off Type: Select the default leave type (e.g. Paid Time Off).
+   - Accrual Plan: Select the default accrual plan.
+   - Carry Forward Generation Mode: Select "Previous Year Only", "Current Year Only", or "All Prior Years".
+3. Click "Save" at the top-left.
+
+[IMAGE PLACEHOLDER: Time Off General Settings Screen]
+
+
+3. HOW TO SET UP ACCRUAL PLANS & EXPIRY RULES (FOR ADMIN)
+--------------------------------------------------------------------------------
+1. Go to "Time Off" -> "Configuration" -> "Accrual Plans".
+2. Click "New" (or open an existing plan).
+3. Add or edit levels based on seniority (e.g. 0-1 yr, 1-3 yrs, 3+ yrs):
+   - Set unused accruals to "Maximum" (to limit carried-over days) or "Lost".
+   - Check "Carry-over validity".
+   - Set "Valid for" (e.g. 4 Months or 120 Days).
+4. Click "Save".
+   * Unused leaves carried over into this plan will automatically expire after the validity period.
+
+[IMAGE PLACEHOLDER: Accrual Plan Level Setup Screen]
+
+
+4. HOW TO GENERATE CARRY-FORWARD ALLOCATION FOR AN EMPLOYEE (FOR ADMIN)
+--------------------------------------------------------------------------------
+1. Go to the "Employees" app.
+2. Select the employee profile.
+3. In the top action bar, click the button: "Generate Carry Forward Allocation".
+4. The system will:
+   - Calculate leave based on the employee's contract start date and accrual plan.
+   - Create and validate the allocation automatically.
+   - Open the new allocation record.
+
+[IMAGE PLACEHOLDER: Employee Profile Header with Generate Button]
+
+
+5. REQUIRED EMPLOYEE PROFILE SETUP (FOR ADMIN)
+--------------------------------------------------------------------------------
+Ensure the following fields are set on the Employee profile for automation to work:
+1. Contract Start Date:
+   - Go to "Employees" -> select employee -> "Contracts" tab -> ensure "Start Date" is set.
+2. Time Off Approver:
+   - Under "Work Information" tab -> set "Approver" (or Manager).
+3. Work Email:
+   - Under "Work Information" tab -> set "Work Email" for email notifications.
+
+[IMAGE PLACEHOLDER: Employee Work Information and Contract Tabs]
+
+================================================================================

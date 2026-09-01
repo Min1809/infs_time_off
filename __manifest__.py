@@ -26,6 +26,7 @@ Long description of module's purpose
         'views/views.xml',
         'views/templates.xml',
         'views/res_config_settings_views.xml',
+        'views/hr_leave_type_views.xml',
         'views/hr_leave_accrual_level_views.xml',
         'views/hr_leave_allocation_views.xml',
         'views/hr_employee_views.xml',
