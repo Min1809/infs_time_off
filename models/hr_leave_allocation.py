@@ -149,8 +149,8 @@ class HolidaysAllocation(models.Model):
             children._process_accrual_plans(date_to, log=False)
         return res
 
-    def _get_other_allocated_days(self, employee, leave_type):
-        """Return total active allocated days/hours for the employee on this leave type, excluding self."""
+    def _get_other_remaining_leaves(self, employee, leave_type):
+        """Return total active remaining (unused) days for the employee on this leave type, excluding self."""
         if not employee or not leave_type:
             return 0.0
         allocations = self.env['hr.leave.allocation'].sudo().search([
@@ -159,16 +159,22 @@ class HolidaysAllocation(models.Model):
             ('state', '=', 'validate'),
             ('id', '!=', self.id or 0),
         ]).filtered(lambda a: not a.date_to or a.date_to >= fields.Date.today())
-        field_name = 'number_of_hours_display' if leave_type.request_unit == 'hour' else 'number_of_days'
-        return sum(allocations.mapped(field_name))
+
+        total_other_remaining_days = 0.0
+        for alloc in allocations:
+            rem_days = alloc.number_of_days - alloc.leaves_taken
+            total_other_remaining_days += max(0.0, rem_days)
+        return total_other_remaining_days
 
     def _add_days_to_allocation(self, current_level, current_level_maximum_leave, leaves_taken, period_start, period_end):
         super()._add_days_to_allocation(current_level, current_level_maximum_leave, leaves_taken, period_start, period_end)
-        # Enforce Leave Type Max Cap
+        # Enforce Leave Type Max Cap on remaining/holding balance
         if self.holiday_status_id.has_max_cap and self.holiday_status_id.max_cap > 0 and self.employee_id:
-            other_days = self._get_other_allocated_days(self.employee_id, self.holiday_status_id)
-            max_allowed = max(0.0, self.holiday_status_id.max_cap - other_days)
-            self.number_of_days = min(self.number_of_days, max_allowed + leaves_taken)
+            other_remaining_days = self._get_other_remaining_leaves(self.employee_id, self.holiday_status_id)
+            max_cap_days = self.holiday_status_id.max_cap
+            # Ensure (self.number_of_days - leaves_taken + other_remaining_days) <= max_cap_days
+            max_allowed_number_of_days = max(0.0, max_cap_days - other_remaining_days) + leaves_taken
+            self.number_of_days = min(self.number_of_days, max_allowed_number_of_days)
 
     def action_validate(self):
         for allocation in self:
@@ -178,27 +184,28 @@ class HolidaysAllocation(models.Model):
                 and allocation.holiday_status_id.has_max_cap
                 and allocation.holiday_status_id.max_cap > 0
             ):
-                other_days = allocation._get_other_allocated_days(allocation.employee_id, allocation.holiday_status_id)
-                max_allowed = max(0.0, allocation.holiday_status_id.max_cap - other_days)
-                field_name = 'number_of_hours_display' if allocation.holiday_status_id.request_unit == 'hour' else 'number_of_days'
-                current_days = getattr(allocation, field_name)
+                other_remaining_days = allocation._get_other_remaining_leaves(allocation.employee_id, allocation.holiday_status_id)
+                max_cap_days = allocation.holiday_status_id.max_cap
+                remaining_capacity = max(0.0, max_cap_days - other_remaining_days)
+                max_allowed = remaining_capacity + allocation.leaves_taken
                 unit_label = _('hours') if allocation.holiday_status_id.request_unit == 'hour' else _('days')
-                if current_days > max_allowed:
+
+                if allocation.number_of_days > max_allowed:
                     if max_allowed <= 0:
                         raise UserError(_(
-                            "Employee %(employee)s has already reached the maximum allocation cap of %(cap)s %(unit)s for %(type)s.",
+                            "Employee %(employee)s already has %(remaining)s %(unit)s of available leaves, reaching the maximum cap of %(cap)s %(unit)s for %(type)s.",
                             employee=allocation.employee_id.name,
-                            cap=allocation.holiday_status_id.max_cap,
+                            remaining=other_remaining_days,
+                            cap=max_cap_days,
                             unit=unit_label,
                             type=allocation.holiday_status_id.name,
                         ))
-                    setattr(allocation, field_name, max_allowed)
                     allocation.number_of_days = max_allowed
                     allocation.message_post(body=_(
-                        "Allocation amount was automatically capped to %(capped)s %(unit)s to comply with the Max Cap (%(cap)s %(unit)s) of %(type)s.",
+                        "Allocation amount was automatically adjusted to %(capped)s %(unit)s to comply with the Max Cap (%(cap)s %(unit)s) of %(type)s.",
                         capped=max_allowed,
                         unit=unit_label,
-                        cap=allocation.holiday_status_id.max_cap,
+                        cap=max_cap_days,
                         type=allocation.holiday_status_id.name,
                     ))
         return super().action_validate()
@@ -211,22 +218,21 @@ class HolidaysAllocation(models.Model):
             and self.holiday_status_id.has_max_cap
             and self.holiday_status_id.max_cap > 0
         ):
-            other_days = self._get_other_allocated_days(self.employee_id, self.holiday_status_id)
-            max_allowed = max(0.0, self.holiday_status_id.max_cap - other_days)
-            field_name = 'number_of_hours_display' if self.holiday_status_id.request_unit == 'hour' else 'number_of_days_display'
-            current_days = getattr(self, field_name)
+            other_remaining_days = self._get_other_remaining_leaves(self.employee_id, self.holiday_status_id)
+            max_cap_days = self.holiday_status_id.max_cap
+            remaining_capacity = max(0.0, max_cap_days - other_remaining_days)
             unit_label = _('hours') if self.holiday_status_id.request_unit == 'hour' else _('days')
-            if current_days > max_allowed:
+            if self.number_of_days > remaining_capacity:
                 return {
                     'warning': {
                         'title': _("Max Cap Exceeded"),
                         'message': _(
-                            "The maximum allocation cap for %(type)s is %(cap)s %(unit)s. This employee already has %(allocated)s %(unit)s allocated. Only %(allowed)s %(unit)s can be added.",
+                            "The maximum holding cap for %(type)s is %(cap)s %(unit)s. This employee currently has %(remaining)s %(unit)s available. You can add up to %(allowed)s %(unit)s.",
                             type=self.holiday_status_id.name,
-                            cap=self.holiday_status_id.max_cap,
+                            cap=max_cap_days,
                             unit=unit_label,
-                            allocated=other_days,
-                            allowed=max_allowed,
+                            remaining=other_remaining_days,
+                            allowed=remaining_capacity,
                         )
                     }
                 }

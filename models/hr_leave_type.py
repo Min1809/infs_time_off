@@ -50,8 +50,6 @@ class HolidaysLeaveType(models.Model):
                             data["virtual_remaining_leaves"] = leave_type.max_cap
                         if data.get("remaining_leaves", 0) > leave_type.max_cap:
                             data["remaining_leaves"] = leave_type.max_cap
-                        if data.get("max_leaves", 0) > leave_type.max_cap:
-                            data["max_leaves"] = leave_type.max_cap
 
                     if data.get("request_unit") in ("day", "half_day"):
                         duration = data.get("virtual_remaining_leaves", 0)
