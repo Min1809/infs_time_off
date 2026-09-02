@@ -119,17 +119,22 @@ class HolidaysRequest(models.Model):
     def _get_approver_partners(self):
         """Return the appropriate approver partner(s) based on validation type and current state."""
         self.ensure_one()
-        partners = self.env["res.partner"]
+        partners = self.env["res.partner"].sudo()
 
         if self.validation_type == "manager" or (
             self.validation_type == "both" and self.state in ("confirm", "draft")
         ):
-            # First approver: employee's manager
-            manager = self.employee_id.leave_manager_id or self.employee_id.parent_id
-            if manager and manager.work_contact_id:
-                partners |= manager.work_contact_id
-            elif manager and manager.user_id:
-                partners |= manager.user_id.partner_id
+            # First approver: Time Off Approver (res.users) or Manager (hr.employee)
+            if self.employee_id.leave_manager_id:
+                # leave_manager_id is a res.users record
+                partners |= self.employee_id.leave_manager_id.partner_id
+            elif self.employee_id.parent_id:
+                # parent_id is an hr.employee record
+                emp_manager = self.employee_id.parent_id
+                if emp_manager.work_contact_id:
+                    partners |= emp_manager.work_contact_id
+                elif emp_manager.user_id:
+                    partners |= emp_manager.user_id.partner_id
 
         elif self.validation_type == "hr" or (
             self.validation_type == "both" and self.state == "validate1"
