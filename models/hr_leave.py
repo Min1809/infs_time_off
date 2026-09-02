@@ -38,14 +38,14 @@ class HolidaysRequest(models.Model):
             )
             return
 
-        partners = self.env["res.partner"].browse(recipient_partner_ids).exists()
+        partners = self.env["res.partner"].sudo().browse(recipient_partner_ids).exists()
         if not partners:
             _logger.warning("SKIP LEAVE EMAIL: no existing partner found for IDs %s", recipient_partner_ids)
             return
 
         # Deduplicate by email to prevent sending twice to the same person
         seen = set()
-        unique = self.env["res.partner"]
+        unique = self.env["res.partner"].sudo()
         for p in partners:
             email = p.email_normalized or p.email
             if email and email not in seen:
@@ -68,7 +68,7 @@ class HolidaysRequest(models.Model):
         email_from_param = params.get_param("infs_time_off.time_off_notification_email_from")
 
         mail_server_id = int(server_param) if server_param and str(server_param).isdigit() else False
-        mail_server = self.env["ir.mail_server"].browse(mail_server_id).exists() if mail_server_id else False
+        mail_server = self.env["ir.mail_server"].sudo().browse(mail_server_id).exists() if mail_server_id else False
 
         for leave in self:
             email_values = {
@@ -101,7 +101,7 @@ class HolidaysRequest(models.Model):
             )
 
             try:
-                mail_id = template.send_mail(
+                mail_id = template.sudo().send_mail(
                     leave.id,
                     force_send=True,
                     raise_exception=True,
