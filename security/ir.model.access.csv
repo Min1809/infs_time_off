@@ -1,2 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_infs_time_off_infs_time_off,infs_time_off.infs_time_off,model_infs_time_off_infs_time_off,base.group_user,1,1,1,1
+access_hr_leave_employee_balance_report_manager,hr.leave.employee.balance.report.manager,model_hr_leave_employee_balance_report,hr_holidays.group_hr_holidays_manager,1,0,0,0

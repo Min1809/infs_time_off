@@ -18,6 +18,11 @@ class HolidaysLeaveType(models.Model):
         string="Max Cap",
         help="Maximum total active allocation allowed for an employee under this time off type across all allocations (direct and accrual).",
     )
+    minimum_required_days = fields.Integer(
+        string="Minimum Required Days in Advance",
+        default=0,
+        help="Minimum number of days in advance an employee must submit this leave request. 0 means no advance notice required.",
+    )
 
     def get_allocation_data(self, employees, target_date=None):
         """Override to add duration_display and per-allocation expiry details."""

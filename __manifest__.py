@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "infs_time_off",
+    'name': "Leave Request",
 
-    'summary': "Short (1 phrase/line) summary of the module's purpose",
+    'summary': "Custom Leave Request and Time Off Management",
 
     'description': """
 Long description of module's purpose
     """,
 
-    'author': "My Company",
-    'website': "https://www.yourcompany.com",
+    'author': "INFS",
+    'website': "https://www.infinityitsuccess.com.com",
 
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/data/ir_module_category_data.xml
@@ -22,7 +22,8 @@ Long description of module's purpose
 
     # always loaded
     'data': [
-        # 'security/ir.model.access.csv',
+        'security/infs_time_off_security.xml',
+        'security/ir.model.access.csv',
         'views/views.xml',
         'views/templates.xml',
         'views/res_config_settings_views.xml',
@@ -30,6 +31,8 @@ Long description of module's purpose
         'views/hr_leave_accrual_level_views.xml',
         'views/hr_leave_allocation_views.xml',
         'views/hr_employee_views.xml',
+        'views/hr_leave_employee_balance_report_views.xml',
+        'views/hr_leave_calendar_views.xml',
         'views/mail_templates.xml',
         'data/cron.xml',
     ],
@@ -43,5 +46,6 @@ Long description of module's purpose
     'demo': [
         'demo/demo.xml',
     ],
+    'post_init_hook': 'post_init_hook',
 }
 

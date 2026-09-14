@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action for Leave Calendar -->
+    <record id="action_hr_leave_calendar_view" model="ir.actions.act_window">
+        <field name="name">Leave Calendar</field>
+        <field name="res_model">hr.leave</field>
+        <field name="view_mode">calendar,tree,form</field>
+        <field name="view_id" ref="hr_holidays.hr_leave_view_calendar"/>
+        <field name="search_view_id" ref="hr_holidays.hr_leave_report_search_view"/>
+        <field name="context">{'search_default_active_time_off': 1, 'search_default_group_employee': 1}</field>
+        <field name="domain">[('active', '=', True), ('active_employee', '=', True), ('state', 'not in', ['cancel', 'refuse'])]</field>
+        <field name="groups_id" eval="[(4, ref('infs_time_off.group_leave_calendar_viewer')), (4, ref('infs_time_off.group_leave_calendar_admin')), (4, ref('hr_holidays.group_hr_holidays_manager'))]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No leave requests found.
+            </p>
+            <p>
+                View all scheduled and approved employee leaves on the calendar.
+            </p>
+        </field>
+    </record>
+
+    <!-- Explicit View Sequences for the Action -->
+    <record id="action_hr_leave_calendar_view_calendar" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">calendar</field>
+        <field name="view_id" ref="hr_holidays.hr_leave_view_calendar"/>
+        <field name="act_window_id" ref="action_hr_leave_calendar_view"/>
+    </record>
+
+    <record id="action_hr_leave_calendar_view_tree" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="hr_holidays.hr_leave_view_tree"/>
+        <field name="act_window_id" ref="action_hr_leave_calendar_view"/>
+    </record>
+
+    <record id="action_hr_leave_calendar_view_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="hr_holidays.hr_leave_view_form_manager"/>
+        <field name="act_window_id" ref="action_hr_leave_calendar_view"/>
+    </record>
+
+    <!-- Menu Item in Time Off / Leave Request module -->
+    <menuitem
+        id="menu_hr_leave_calendar"
+        name="Leave Calendar"
+        parent="hr_holidays.menu_hr_holidays_root"
+        action="action_hr_leave_calendar_view"
+        groups="infs_time_off.group_leave_calendar_viewer,infs_time_off.group_leave_calendar_admin,hr_holidays.group_hr_holidays_manager"
+        sequence="2"/>
+
+</odoo>

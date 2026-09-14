@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Search View -->
+    <record id="view_search_hr_leave_employee_balance_report" model="ir.ui.view">
+        <field name="name">hr.leave.employee.balance.report.search</field>
+        <field name="model">hr.leave.employee.balance.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Employee Balances">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="holiday_status_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+
+                <filter string="Active Employees" name="active_employees" domain="[('active_employee', '=', True)]"/>
+                <separator/>
+                <filter string="Has Remaining Balance" name="positive_balance" domain="[('remaining_leaves', '&gt;', 0)]"/>
+                <filter string="Has Allocation" name="has_allocation" domain="[('allocated_days', '&gt;', 0)]"/>
+                <filter string="Has Taken Time Off" name="has_taken" domain="[('leaves_taken', '&gt;', 0)]"/>
+                <separator/>
+                <filter string="Capped Leave Types" name="has_max_cap" domain="[('has_max_cap', '=', True)]"/>
+
+                <group expand="0" string="Group By">
+                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Department" name="group_department" context="{'group_by': 'department_id'}"/>
+                    <filter string="Time Off Type" name="group_type" context="{'group_by': 'holiday_status_id'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Tree View -->
+    <record id="view_tree_hr_leave_employee_balance_report" model="ir.ui.view">
+        <field name="name">hr.leave.employee.balance.report.tree</field>
+        <field name="model">hr.leave.employee.balance.report</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" delete="0" sample="1">
+                <field name="employee_id" widget="many2one_avatar_employee"/>
+                <field name="department_id" optional="show"/>
+                <field name="holiday_status_id"/>
+                <field name="allocated_days" sum="Total Allocated"/>
+                <field name="leaves_taken" sum="Total Taken"/>
+                <field name="leaves_planned" sum="Total Planned" optional="show"/>
+                <field name="remaining_leaves" sum="Total Remaining" decoration-bf="1" decoration-success="remaining_leaves &gt; 0" decoration-muted="remaining_leaves == 0"/>
+                <field name="remaining_display" string="Balance Display" optional="show"/>
+                <field name="max_cap" optional="hide"/>
+                <field name="closest_allocation_expire" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <button name="action_view_allocations" type="object" icon="fa-plus-square" title="View Allocations"/>
+                <button name="action_view_leaves" type="object" icon="fa-calendar" title="View Time Off Requests"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Pivot View -->
+    <record id="view_pivot_hr_leave_employee_balance_report" model="ir.ui.view">
+        <field name="name">hr.leave.employee.balance.report.pivot</field>
+        <field name="model">hr.leave.employee.balance.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Employee Time Off Balances" sample="1" disable_linking="1">
+                <field name="employee_id" type="row"/>
+                <field name="holiday_status_id" type="col"/>
+                <field name="remaining_leaves" type="measure"/>
+                <field name="allocated_days" type="measure"/>
+                <field name="leaves_taken" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Action Window -->
+    <record id="action_hr_leave_employee_balance_report" model="ir.actions.act_window">
+        <field name="name">Employee Time Off Balances</field>
+        <field name="res_model">hr.leave.employee.balance.report</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="search_view_id" ref="view_search_hr_leave_employee_balance_report"/>
+        <field name="context">{'search_default_active_employees': 1}</field>
+        <field name="groups_id" eval="[(4, ref('hr_holidays.group_hr_holidays_manager'))]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No leave balance data found.
+            </p>
+            <p>
+                Here you can view the active allocations, leaves taken, and remaining balances for every employee across all time off types.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items (Admin Only) -->
+    <menuitem
+        id="menu_hr_leave_employee_balance_report"
+        name="Employee Balances"
+        parent="hr_holidays.menu_hr_holidays_report"
+        action="action_hr_leave_employee_balance_report"
+        groups="hr_holidays.group_hr_holidays_manager"
+        sequence="1"/>
+
+    <menuitem
+        id="menu_hr_leave_employee_balance_management"
+        name="Employee Balances"
+        parent="hr_holidays.menu_hr_holidays_management"
+        action="action_hr_leave_employee_balance_report"
+        groups="hr_holidays.group_hr_holidays_manager"
+        sequence="3"/>
+
+</odoo>

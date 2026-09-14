@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Category for Leave Calendar Access under Human Resources -->
+    <record id="module_category_leave_calendar" model="ir.module.category">
+        <field name="name">Leave Calendar</field>
+        <field name="description">Access rights for Leave Calendar</field>
+        <field name="parent_id" ref="base.module_category_human_resources"/>
+        <field name="sequence">25</field>
+    </record>
+
+    <!-- Group: Viewer -->
+    <record id="group_leave_calendar_viewer" model="res.groups">
+        <field name="name">Viewer</field>
+        <field name="category_id" ref="infs_time_off.module_category_leave_calendar"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Group: Admin -->
+    <record id="group_leave_calendar_admin" model="res.groups">
+        <field name="name">Admin</field>
+        <field name="category_id" ref="infs_time_off.module_category_leave_calendar"/>
+        <field name="implied_ids" eval="[(4, ref('infs_time_off.group_leave_calendar_viewer'))]"/>
+    </record>
+
+    <!-- Record Rules -->
+    <data noupdate="1">
+        <!-- Viewer: Read-only access to all employee leave requests -->
+        <record id="hr_leave_rule_calendar_viewer_read" model="ir.rule">
+            <field name="name">Leave Calendar Viewer Read All</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+            <field name="groups" eval="[(4, ref('infs_time_off.group_leave_calendar_viewer'))]"/>
+        </record>
+
+        <!-- Admin: Full access to all employee leave requests -->
+        <record id="hr_leave_rule_calendar_admin_all" model="ir.rule">
+            <field name="name">Leave Calendar Admin Full Access</field>
+            <field name="model_id" ref="hr_holidays.model_hr_leave"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+            <field name="groups" eval="[(4, ref('infs_time_off.group_leave_calendar_admin'))]"/>
+        </record>
+    </data>
+
+</odoo>

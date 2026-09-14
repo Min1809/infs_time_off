@@ -15,6 +15,11 @@
                            invisible="not has_max_cap"
                            required="requires_allocation == 'yes' and has_max_cap"/>
                 </group>
+                <group name="advance_notice" id="advance_notice"
+                       string="Submission Advance Notice">
+                    <field name="minimum_required_days"
+                           class="o_hr_narrow_field"/>
+                </group>
             </xpath>
         </field>
     </record>

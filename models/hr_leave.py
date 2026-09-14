@@ -2,7 +2,7 @@
 
 import logging
 
-from odoo import api, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -10,6 +10,52 @@ _logger = logging.getLogger(__name__)
 
 class HolidaysRequest(models.Model):
     _inherit = "hr.leave"
+
+    # ------------------------------------------------------------
+    # Minimum Advance Notice Validation
+    # ------------------------------------------------------------
+
+    @api.constrains("request_date_from", "date_from", "holiday_status_id", "state")
+    def _check_minimum_required_days(self):
+        """Validate that leave requests are submitted with the required minimum advance notice."""
+        if self.env.context.get("leave_skip_min_days_check"):
+            return
+
+        # Allow Time Off Officers and Administrators to bypass the advance notice restriction on behalf of employees
+        is_officer = (
+            self.user_has_groups("hr_holidays.group_hr_holidays_user")
+            or self.user_has_groups("hr_holidays.group_hr_holidays_manager")
+        )
+        if is_officer:
+            return
+
+        today = fields.Date.today()
+        for leave in self:
+            if leave.state in ("refuse", "cancel"):
+                continue
+
+            min_days = leave.holiday_status_id.minimum_required_days
+            if not min_days or min_days <= 0:
+                continue
+
+            req_date = leave.request_date_from
+            if not req_date and leave.date_from:
+                req_date = leave.date_from.date()
+            if not req_date:
+                continue
+
+            diff_days = (req_date - today).days
+            if diff_days < min_days:
+                raise UserError(
+                    _(
+                        "For %(leave_type)s, you need to submit at least %(min_days)s days in advance.\n"
+                        "If you really need to take leave on that day, please contact your manager."
+                    )
+                    % {
+                        "leave_type": leave.holiday_status_id.name,
+                        "min_days": min_days,
+                    }
+                )
 
     # ------------------------------------------------------------
     # Disable default notifications (we send custom emails instead)
