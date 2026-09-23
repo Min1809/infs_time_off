@@ -74,7 +74,7 @@
         <!-- CTA Button -->
         <tr>
             <td style="padding: 10px 40px 30px 40px; text-align: center;">
-                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                <a t-att-href="'/web#id=%s&amp;cids=%s&amp;model=hr.leave&amp;view_type=form' % (object.id, '2-1' if (object.employee_company_id.id or object.company_id.id) == 2 else '1-2')"
                    style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
                     View Request &#8594;
                 </a>
@@ -163,7 +163,7 @@
         <!-- CTA Button -->
         <tr>
             <td style="padding: 10px 40px 30px 40px; text-align: center;">
-                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                <a t-att-href="'/web#id=%s&amp;cids=%s&amp;model=hr.leave&amp;view_type=form' % (object.id, '2-1' if (object.employee_company_id.id or object.company_id.id) == 2 else '1-2')"
                    style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
                     View Request &#8594;
                 </a>
@@ -252,7 +252,7 @@
         <!-- CTA Button -->
         <tr>
             <td style="padding: 10px 40px 30px 40px; text-align: center;">
-                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                <a t-att-href="'/web#id=%s&amp;cids=%s&amp;model=hr.leave&amp;view_type=form' % (object.id, '2-1' if (object.employee_company_id.id or object.company_id.id) == 2 else '1-2')"
                    style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
                     View Request &#8594;
                 </a>
@@ -349,7 +349,7 @@
         <!-- CTA Button -->
         <tr>
             <td style="padding: 10px 40px 30px 40px; text-align: center;">
-                <a t-att-href="'/web#id=%s&amp;model=hr.leave&amp;view_type=form' % object.id"
+                <a t-att-href="'/web#id=%s&amp;cids=%s&amp;model=hr.leave&amp;view_type=form' % (object.id, '2-1' if (object.employee_company_id.id or object.company_id.id) == 2 else '1-2')"
                    style="display: inline-block; background-color: #714B67; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 4px; font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">
                     Review Request &#8594;
                 </a>
