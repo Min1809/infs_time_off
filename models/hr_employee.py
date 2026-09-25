@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from odoo import _, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
@@ -141,3 +141,42 @@ class HolidaysEmployee(models.Model):
                 s.requires_allocation = 'yes'
             GROUP BY h_total.employee_id""", (tuple(self.ids), fields.Date.today()))
         return {row['employee_id']: row['days'] for row in self._cr.dictfetchall()}
+
+    @api.model
+    def _sync_parent_approver_group(self):
+        """Ensure only users who are parent_id.user_id of active employees belong to group_leave_parent_approver."""
+        group = self.env.ref("infs_time_off.group_leave_parent_approver", raise_if_not_found=False)
+        if not group:
+            return
+
+        # Find all user IDs that are parent_id.user_id of active employees
+        employees = self.sudo().search([("active", "=", True), ("parent_id.user_id", "!=", False)])
+        manager_user_ids = list(set(employees.mapped("parent_id.user_id.id")))
+
+        # Strictly replace group members with active direct managers
+        group.sudo().write({"users": [(6, 0, manager_user_ids)]})
+
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            self._sync_parent_approver_group()
+        except Exception:
+            pass
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        employees = super().create(vals_list)
+        if any("parent_id" in v or "user_id" in v for v in vals_list):
+            self._sync_parent_approver_group()
+        return employees
+
+    def write(self, vals):
+        res = super().write(vals)
+        if any(f in vals for f in ("parent_id", "user_id", "active")):
+            self._sync_parent_approver_group()
+        return res
+
+    def unlink(self):
+        res = super().unlink()
+        self._sync_parent_approver_group()
+        return res

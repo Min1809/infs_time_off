@@ -33,6 +33,7 @@ Long description of module's purpose
         'views/hr_employee_views.xml',
         'views/hr_leave_employee_balance_report_views.xml',
         'views/hr_leave_calendar_views.xml',
+        'views/hr_leave_approval_views.xml',
         'views/mail_templates.xml',
         'data/cron.xml',
     ],

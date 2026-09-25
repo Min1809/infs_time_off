@@ -50,6 +50,6 @@
         parent="hr_holidays.menu_hr_holidays_root"
         action="action_hr_leave_calendar_view"
         groups="infs_time_off.group_leave_calendar_viewer,infs_time_off.group_leave_calendar_admin,hr_holidays.group_hr_holidays_manager"
-        sequence="2"/>
+        sequence="3"/>
 
 </odoo>

@@ -3,7 +3,7 @@
 import logging
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -18,20 +18,25 @@ class HolidaysRequest(models.Model):
     @api.constrains("request_date_from", "date_from", "holiday_status_id", "state")
     def _check_minimum_required_days(self):
         """Validate that leave requests are submitted with the required minimum advance notice."""
-        if self.env.context.get("leave_skip_min_days_check"):
+        if self.env.context.get("leave_skip_min_days_check") or self.env.is_superuser():
             return
 
-        # Allow Time Off Officers and Administrators to bypass the advance notice restriction on behalf of employees
-        is_officer = (
-            self.user_has_groups("hr_holidays.group_hr_holidays_user")
+        # Allow Time Off Officers, Managers, and Responsibles to bypass advance notice check
+        is_officer_or_manager = (
+            self.user_has_groups("hr_holidays.group_hr_holidays_responsible")
+            or self.user_has_groups("hr_holidays.group_hr_holidays_user")
             or self.user_has_groups("hr_holidays.group_hr_holidays_manager")
         )
-        if is_officer:
+        if is_officer_or_manager:
             return
 
-        today = fields.Date.today()
         for leave in self:
-            if leave.state in ("refuse", "cancel"):
+            # Skip check for leaves being approved, validated, refused, or cancelled
+            if leave.state in ("validate1", "validate", "refuse", "cancel"):
+                continue
+
+            # Allow direct manager or leave manager to bypass
+            if self._is_manager_for_leave(leave):
                 continue
 
             min_days = leave.holiday_status_id.minimum_required_days
@@ -44,7 +49,9 @@ class HolidaysRequest(models.Model):
             if not req_date:
                 continue
 
-            diff_days = (req_date - today).days
+            # Calculate advance notice based on submission/creation date
+            submission_date = leave.create_date.date() if leave.create_date else fields.Date.today()
+            diff_days = (req_date - submission_date).days
             if diff_days < min_days:
                 raise UserError(
                     _(
@@ -56,6 +63,87 @@ class HolidaysRequest(models.Model):
                         "min_days": min_days,
                     }
                 )
+
+    # ------------------------------------------------------------
+    # Approval Security Override (Support direct manager parent_id.user_id)
+    # ------------------------------------------------------------
+
+    def _is_manager_for_leave(self, holiday):
+        """Check if current user is the authorized manager for this leave request."""
+        user = self.env.user
+        emp = holiday.employee_id
+        if not emp and holiday.sudo().employee_ids:
+            emp = holiday.sudo().employee_ids
+
+        for e in emp:
+            if e.leave_manager_id and e.leave_manager_id == user:
+                return True
+            if e.parent_id:
+                if e.parent_id.user_id and e.parent_id.user_id == user:
+                    return True
+                if user.employee_ids and e.parent_id in user.employee_ids:
+                    return True
+                if user.employee_id and e.parent_id == user.employee_id:
+                    return True
+                if e.parent_id.work_email and user.email and e.parent_id.work_email.strip().lower() == user.email.strip().lower():
+                    return True
+        return False
+
+    @api.depends_context("uid")
+    @api.depends("state", "employee_id", "department_id")
+    def _compute_can_reset(self):
+        is_officer = (
+            self.env.is_superuser()
+            or self.user_has_groups("hr_holidays.group_hr_holidays_user")
+            or self.user_has_groups("hr_holidays.group_hr_holidays_manager")
+        )
+        for holiday in self:
+            if is_officer:
+                holiday.can_reset = True
+            elif self._is_manager_for_leave(holiday):
+                holiday.can_reset = holiday.state in ("confirm", "refuse")
+            elif holiday.employee_id.user_id == self.env.user:
+                holiday.can_reset = holiday.state == "confirm"
+            else:
+                holiday.can_reset = False
+
+    @api.depends_context("uid")
+    @api.depends("state", "employee_id", "department_id")
+    def _compute_can_approve(self):
+        is_officer = (
+            self.env.is_superuser()
+            or self.user_has_groups("hr_holidays.group_hr_holidays_user")
+            or self.user_has_groups("hr_holidays.group_hr_holidays_manager")
+        )
+        for holiday in self:
+            if is_officer:
+                holiday.can_approve = True
+            elif self._is_manager_for_leave(holiday):
+                if holiday.state == "confirm":
+                    holiday.can_approve = True
+                elif holiday.state == "validate1" and holiday.validation_type in ("manager", "no_validation"):
+                    holiday.can_approve = True
+                else:
+                    holiday.can_approve = False
+            else:
+                holiday.can_approve = False
+
+    def _check_approval_update(self, state):
+        """Allow parent_id.user_id in addition to leave_manager_id to approve/refuse/reset."""
+        if (
+            self.env.is_superuser()
+            or self.user_has_groups("hr_holidays.group_hr_holidays_user")
+            or self.user_has_groups("hr_holidays.group_hr_holidays_manager")
+        ):
+            return super()._check_approval_update(state)
+
+        for holiday in self:
+            if self._is_manager_for_leave(holiday):
+                if state == "draft" and holiday.state == "validate":
+                    raise UserError(_("Only a Time Off Manager can reset an approved leave."))
+                continue
+
+            super(HolidaysRequest, holiday)._check_approval_update(state)
 
     # ------------------------------------------------------------
     # Disable default notifications (we send custom emails instead)
@@ -231,7 +319,7 @@ class HolidaysRequest(models.Model):
         return res
 
     def action_approve(self, check_state=True):
-        res = super().action_approve(check_state=check_state)
+        res = super(HolidaysRequest, self.with_context(leave_skip_min_days_check=True)).action_approve(check_state=check_state)
 
         # For 'both' validation type: after first approval, notify second approver
         for leave in self.filtered(lambda l: l.validation_type == "both" and l.state == "validate1"):
@@ -242,7 +330,7 @@ class HolidaysRequest(models.Model):
         return res
 
     def action_validate(self):
-        res = super().action_validate()
+        res = super(HolidaysRequest, self.with_context(leave_skip_min_days_check=True)).action_validate()
 
         # Notify employee that leave is approved
         for leave in self:
@@ -257,7 +345,7 @@ class HolidaysRequest(models.Model):
         return res
 
     def action_refuse(self):
-        res = super().action_refuse()
+        res = super(HolidaysRequest, self.with_context(leave_skip_min_days_check=True)).action_refuse()
 
         # Notify employee that leave is refused
         for leave in self:
@@ -270,3 +358,6 @@ class HolidaysRequest(models.Model):
                 )
 
         return res
+
+    def action_draft(self):
+        return super(HolidaysRequest, self.with_context(leave_skip_min_days_check=True)).action_draft()
